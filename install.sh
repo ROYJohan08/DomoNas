@@ -24,6 +24,16 @@ apt-get autoremove -y --purge -qq > /dev/null
 apt-get autoclean -y -qq > /dev/null
 log "[+]" "Mise a jours du systeme terminée."
 
+mkdir -p "$SOF_DIR" "$TEM_DIR"
+wget -O "$TEM_DIR/install.sh" https://raw.githubusercontent.com/ROYJohan08/DomoNas/refs/heads/main/install.sh
+if [ ! -f "$SOF_DIR/install.sh" ] || [ "$TEM_DIR/install.sh" -nt "$SOF_DIR/install.sh" ]; then
+    cp "$TEM_DIR/install.sh" "$SOF_DIR/install.sh"
+    log "[!]" "install.sh a été mis à jour dans $SOF_DIR."
+else
+    log "[!]" "Le fichier dans $SOF_DIR est déjà à jour ou plus récent."
+fi
+rm -f "$TEM_DIR/install.sh"
+
 log "[*]" "Vérification de docker."
 if ! command -v docker &> /dev/null; then
     log "[!]" "Docker n'est pas installé. Lancement de l'installation..."
