@@ -459,7 +459,7 @@ case "$1" in
             -p "$PORT_HOMEASSISTANT:8123" \
             homeassistant/home-assistant:latest
         ;;
-        update)
+    update)
         docker rm -f homeassistant 2>/dev/null || true
         docker pull homeassistant/home-assistant:latest || echo ""
         docker run -d \
