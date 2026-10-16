@@ -64,7 +64,7 @@ for pkg in $PACKAGES; do
         log "[*]" "Paquet '$pkg' déjà installé."
     else
         log "[!]" "Paquet '$pkg' absent. Installation en cours..."
-        if apt-get install -y "$pkg"; then
+        if apt-get install -y "$pkg" > /dev/null; then
             log "[+]" "Paquet '$pkg' installé avec succès."
         else
             log "[-]" "Échec lors de l'installation du paquet '$pkg'."
