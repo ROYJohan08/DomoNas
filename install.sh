@@ -5,7 +5,7 @@ if [ "$(id -u)" -ne 0 ]; then
     echo "Droits insuffisants : exécuter ce script en tant que root." >&2
     exit 1
 fi
-
+DEBUG=1
 BASE_DIR="/etc/DomoNas"
 LOG_DIR="$BASE_DIR/Logs"
 TEM_DIR="$BASE_DIR/Temp"
@@ -14,6 +14,9 @@ CRE_DIR="$BASE_DIR/Credentials"
 
 log() {
     mkdir -p "$LOG_DIR"
+    if [ "$DEBUG" = "1" ]; then
+        echo "[$1] - $(date +'%Y-%m-%d %H:%M:%S') - $2"
+    fi
     echo "[$1] - $(date +'%Y-%m-%d %H:%M:%S') - $2" >> "${LOG_DIR}/$(date +'%Y%m%d')-INSTALL.log"
 }
 
@@ -1438,25 +1441,25 @@ EOF
 chmod +x /usr/local/bin/immich
 ln -sf /usr/local/bin/immich /usr/local/bin/im
 log "[+]" "Commande 'immich' (ou 'im') créée avec succès."
-log "[*]" "Vérification de l'état des conteneurs Docker..."
-SERVICES="lamp homeassistant jellyfin transmission seedbox grocy portainer filebrowser freshrss mqtt gitea siyuan myelectricaldata kiwix kolibri cyberchef vaultwarden immich"
-for srv in $SERVICES; do
-    if [ -x "/usr/local/bin/$srv" ]; then
-        container_name="$srv"
-        [ "$srv" = "transmission" ] && container_name="transmission"
-        [ "$srv" = "myelectricaldata" ] && container_name="myelectricaldata"
-        [ "$srv" = "mqtt" ] && container_name="mqtt"
-        [ "$srv" = "immich" ] && container_name="immich"
-        if docker ps --format '{{.Names}}' | grep -q "^${container_name}$"; then
-            log "[*]" "Le conteneur '$container_name' est déjà actif."
-        else
-            log "[!]" "Le conteneur '$container_name' est arrêté ou absent. Lancement via '$srv create'..."
-            if "/usr/local/bin/$srv" create; then
-                log "[+]" "Service '$srv' initialisé et lancé avec succès."
-            else
-                log "[-]" "Échec lors de l'initialisation du service '$srv'."
-            fi
-        fi
-    fi
-done
-log "[+]" "Tous les services Docker ont été vérifiés et lancés."
+#log "[*]" "Vérification de l'état des conteneurs Docker..."
+#SERVICES="lamp homeassistant jellyfin transmission seedbox grocy portainer filebrowser freshrss mqtt gitea siyuan myelectricaldata kiwix kolibri cyberchef vaultwarden immich"
+#for srv in $SERVICES; do
+#    if [ -x "/usr/local/bin/$srv" ]; then
+#        container_name="$srv"
+#        [ "$srv" = "transmission" ] && container_name="transmission"
+#        [ "$srv" = "myelectricaldata" ] && container_name="myelectricaldata"
+#        [ "$srv" = "mqtt" ] && container_name="mqtt"
+#        [ "$srv" = "immich" ] && container_name="immich"
+#        if docker ps --format '{{.Names}}' | grep -q "^${container_name}$"; then
+#            log "[*]" "Le conteneur '$container_name' est déjà actif."
+#        else
+#            log "[!]" "Le conteneur '$container_name' est arrêté ou absent. Lancement via '$srv create'..."
+#            if "/usr/local/bin/$srv" create; then
+#                log "[+]" "Service '$srv' initialisé et lancé avec succès."
+#            else
+#                log "[-]" "Échec lors de l'initialisation du service '$srv'."
+#            fi
+#        fi
+#    fi
+#done
+#log "[+]" "Tous les services Docker ont été vérifiés et lancés."
