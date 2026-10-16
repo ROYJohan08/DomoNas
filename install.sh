@@ -1,5 +1,5 @@
 #!/bin/sh
-#VERSION 202610161347
+#VERSION 202610161351
 set -eu
 
 if [ "$(id -u)" -ne 0 ]; then
@@ -222,8 +222,8 @@ cat << 'EOF' > /etc/samba/smb.conf
     force user = royjohan
 EOF
 chown -R royjohan:royjohan /media 2>/dev/null || true
-systemctl restart smbd nmbd
-systemctl enable smbd nmbd
+systemctl restart smbd nmbd >/dev/null
+systemctl enable smbd nmbd >/dev/null
 log "[+]" "Samba configuré et redémarré."
 
 log "[*]" "Configuration du port Cockpit ($PORT_COCKPIT)..."
@@ -250,8 +250,8 @@ login=$USERNAME_DYDNS
 password=$PASSWORD_DYDNS
 $DOMAIL_DYDNS
 EOF
-systemctl enable ddclient
-systemctl restart ddclient
+systemctl enable ddclient >/dev/null
+systemctl restart ddclient >/dev/null
 log "[+]" "DDClient configuré pour le domaine $DOMAIL_DYDNS."
 
 log "[*]" "Configuration de Fail2ban..."
@@ -267,8 +267,8 @@ port    = ssh
 logpath = %(sshd_log)s
 backend = %(sshd_backend)s
 EOF
-systemctl restart fail2ban
-systemctl enable fail2ban
+systemctl restart fail2ban >/dev/null
+systemctl enable fail2ban >/dev/null
 log "[+]" "Fail2ban configuré et activé."
 
 log "[*]" "Configuration de Smartmontools..."
@@ -276,8 +276,8 @@ sed -i 's/#start_due_daemon=yes/start_due_daemon=yes/' /etc/default/smartmontool
 cat << 'EOF' > /etc/smartd.conf
 DEVICESCAN -H -m root -M exec /usr/share/smartmontools/smartd-runner
 EOF
-systemctl enable smartmontools
-systemctl restart smartmontools
+systemctl enable smartmontools >/dev/null
+systemctl restart smartmontools >/dev/null
 log "[+]" "Smartmontools activé."
 
 log "[*]" "Configuration des capteurs de température..."
@@ -315,8 +315,8 @@ repair-timeout = 30
 EOF
 modprobe softdog 2>/dev/null || true
 echo "softdog" > /etc/modules-load.d/softdog.conf
-systemctl enable watchdog
-systemctl restart watchdog
+systemctl enable watchdog >/dev/null
+systemctl restart watchdog >/dev/null
 log "[+]" "Watchdog configuré avec le script pointant vers $SOF_DIR/fix-network.sh."
 log "[*]" "Configuration du service systemd pour Glances..."
 
@@ -333,9 +333,9 @@ RemainAfterExit=no
 [Install]
 WantedBy=multi-user.target
 EOF
-systemctl daemon-reload
-systemctl enable glances.service
-systemctl restart glances.service
+systemctl daemon-reload >/dev/null
+systemctl enable glances.service >/dev/null
+systemctl restart glances.service >/dev/null
 log "[+]" "Glances configuré et démarré en mode Web (accessible par défaut sur le port 61208)."
 log "[*]" "Recherche et montage automatique des disques branchés..."
 lsblk -rno NAME,MOUNTPOINT,LABEL,TYPE,UUID | while read -r name mountpoint label type uuid; do
