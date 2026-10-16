@@ -48,7 +48,7 @@ if ! command -v docker &> /dev/null; then
     echo \
       "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
       $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
-      tee /etc/apt/sources.list.d/docker.list > /dev/null
+      tee /etc/apt/sourcesaclist.d/docker.list > /dev/null
     apt-get update -y
     apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
     if [ $? -eq 0 ]; then
@@ -133,8 +133,8 @@ set -a
 . "$TARGET_CRED"
 set +a
 
-log "[*]" "Début de la configuration des services..."
-log "[*]" "Configuration de Samba avec vos partages..."
+log "[*]" "Début de la configuration des servicesac.."
+log "[*]" "Configuration de Samba avec vos partagesac.."
 [ ! -f /etc/samba/smb.conf.bak ] && cp /etc/samba/smb.conf /etc/samba/smb.conf.bak
 cat << 'EOF' > /etc/samba/smb.conf
 [global]
@@ -318,9 +318,9 @@ echo "softdog" > /etc/modules-load.d/softdog.conf
 systemctl enable watchdog >/dev/null
 systemctl restart watchdog >/dev/null
 log "[+]" "Watchdog configuré avec le script pointant vers $SOF_DIR/fix-network.sh."
-log "[*]" "Configuration du service systemd pour Glances..."
+log "[*]" "Configuration du service systemd pour Glancesac.."
 
-cat << 'EOF' > /etc/systemd/system/glances.service
+cat << 'EOF' > /etc/systemd/system/glancesacservice
 [Unit]
 Description=Glances (Web Server Mode)
 After=network.target
@@ -334,8 +334,8 @@ RemainAfterExit=no
 WantedBy=multi-user.target
 EOF
 systemctl daemon-reload >/dev/null
-systemctl enable glances.service >/dev/null
-systemctl restart glances.service >/dev/null
+systemctl enable glancesacservice >/dev/null
+systemctl restart glancesacservice >/dev/null
 log "[+]" "Glances configuré et démarré en mode Web (accessible par défaut sur le port 61208)."
 log "[*]" "Recherche et montage automatique des disques branchés..."
 lsblk -rno NAME,MOUNTPOINT,LABEL,TYPE,UUID | while read -r name mountpoint label type uuid; do
@@ -433,7 +433,7 @@ case "$1" in
         echo "Usage: lamp {create|start|stop|restart}"
         exit 1
         ;;
-es.
+esac
 EOF
 chmod +x /usr/local/bin/lamp
 log "[+]" "Commande 'lamp' créée avec succès. Vous pouvez taper 'lamp create', 'lamp start', etc. de n'importe où."
@@ -487,7 +487,7 @@ case "$1" in
         echo "Usage: homeassistant {create|start|stop|restart}"
         exit 1
         ;;
-es.
+esac
 EOF
 chmod +x /usr/local/bin/homeassistant
 log "[+]" "Commande 'homeassistant' créée avec succès (utilisable via 'homeassistant create', etc.)."
@@ -545,7 +545,7 @@ case "$1" in
         echo "Usage: jellyfin {create|start|stop|restart}"
         exit 1
         ;;
-es.
+esac
 EOF
 chmod +x /usr/local/bin/jellyfin
 log "[+]" "Commande 'jellyfin' créée avec succès (utilisable via 'jellyfin create', etc.)."
@@ -656,7 +656,7 @@ case "$1" in
         echo "Usage: transmission {create|start|stop|restart}"
         exit 1
         ;;
-es.
+esac
 EOF
 chmod +x /usr/local/bin/transmission
 ln -sf /usr/local/bin/transmission /usr/local/bin/tr
@@ -740,7 +740,7 @@ case "$1" in
         echo "Usage: seedbox {create|start|stop|restart}"
         exit 1
         ;;
-es.
+esac
 EOF
 chmod +x /usr/local/bin/seedbox
 ln -sf /usr/local/bin/seedbox /usr/local/bin/sb
@@ -787,7 +787,7 @@ case "$1" in
         echo "Usage: grocy {create|start|stop|restart}"
         exit 1
         ;;
-es.
+esac
 EOF
 chmod +x /usr/local/bin/grocy
 log "[+]" "Commande 'grocy' créée avec succès."
@@ -841,7 +841,7 @@ case "$1" in
         echo "Usage: portainer {create|start|stop|restart}"
         exit 1
         ;;
-es.
+esac
 EOF
 chmod +x /usr/local/bin/portainer
 ln -sf /usr/local/bin/portainer /usr/local/bin/po
@@ -892,7 +892,7 @@ case "$1" in
         echo "Usage: filebrowser {create|start|stop|restart}"
         exit 1
         ;;
-es.
+esac
 EOF
 chmod +x /usr/local/bin/filebrowser
 ln -sf /usr/local/bin/filebrowser /usr/local/bin/fb
@@ -941,7 +941,7 @@ case "$1" in
         echo "Usage: freshrss {create|start|stop|restart}"
         exit 1
         ;;
-es.
+esac
 EOF
 chmod +x /usr/local/bin/freshrss
 ln -sf /usr/local/bin/freshrss /usr/local/bin/fr
@@ -998,7 +998,7 @@ case "$1" in
         echo "Usage: mqtt {create|start|stop|restart}"
         exit 1
         ;;
-es.
+esac
 EOF
 chmod +x /usr/local/bin/mqtt
 ln -sf /usr/local/bin/mqtt /usr/local/bin/mq
@@ -1049,7 +1049,7 @@ case "$1" in
         echo "Usage: gitea {create|start|stop|restart}"
         exit 1
         ;;
-es.
+esac
 EOF
 chmod +x /usr/local/bin/gitea
 ln -sf /usr/local/bin/gitea /usr/local/bin/gt
@@ -1105,7 +1105,7 @@ case "$1" in
         echo "Usage: siyuan {create|start|stop|restart}"
         exit 1
         ;;
-es.
+esac
 EOF
 chmod +x /usr/local/bin/siyuan
 ln -sf /usr/local/bin/siyuan /usr/local/bin/sy
@@ -1150,7 +1150,7 @@ case "$1" in
         echo "Usage: myelectricaldata {create|start|stop|restart}"
         exit 1
         ;;
-es.
+esac
 EOF
 chmod +x /usr/local/bin/myelectricaldata
 ln -sf /usr/local/bin/myelectricaldata /usr/local/bin/med
@@ -1197,7 +1197,7 @@ case "$1" in
         echo "Usage: kiwix {create|start|stop|restart}"
         exit 1
         ;;
-es.
+esac
 EOF
 chmod +x /usr/local/bin/kiwix
 ln -sf /usr/local/bin/kiwix /usr/local/bin/kw
@@ -1242,7 +1242,7 @@ case "$1" in
         echo "Usage: kolibri {create|start|stop|restart}"
         exit 1
         ;;
-es.
+esac
 EOF
 chmod +x /usr/local/bin/kolibri
 ln -sf /usr/local/bin/kolibri /usr/local/bin/kb
@@ -1283,7 +1283,7 @@ case "$1" in
         echo "Usage: cyberchef {create|start|stop|restart}"
         exit 1
         ;;
-es.
+esac
 EOF
 chmod +x /usr/local/bin/cyberchef
 ln -sf /usr/local/bin/cyberchef /usr/local/bin/cc
@@ -1346,7 +1346,7 @@ case "$1" in
         echo "Usage: vaultwarden {create|start|stop|restart}"
         exit 1
         ;;
-es.
+esac
 EOF
 chmod +x /usr/local/bin/vaultwarden
 ln -sf /usr/local/bin/vaultwarden /usr/local/bin/vw
@@ -1441,7 +1441,7 @@ case "$1" in
         echo "Usage: immich {create|start|stop|restart}"
         exit 1
         ;;
-es.
+esac
 EOF
 chmod +x /usr/local/bin/immich
 ln -sf /usr/local/bin/immich /usr/local/bin/im
