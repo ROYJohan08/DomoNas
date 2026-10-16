@@ -1,4 +1,5 @@
 #!/bin/sh
+#VERSION 202610161340
 set -eu
 
 if [ "$(id -u)" -ne 0 ]; then
@@ -93,6 +94,32 @@ if [ ! -f "$TARGET_CRED" ]; then
         log "[*]" "Téléchargement du modèle depuis GitHub..."
         if curl -fsSL "https://raw.githubusercontent.com/ROYJohan08/DomoNas/refs/heads/main/credentials.env" -o "$TARGET_CRED"; then
             log "[+]" "Modèle téléchargé avec succès dans $TARGET_CRED."
+            if [ -f "$TARGET_CRED" ]; then
+                log "[*]" "Vérification et configuration interactive des variables de credentials..."
+                echo "------------------------------------------------------------------"
+                echo "Veuillez renseigner les valeurs pour chaque variable (Appuyez sur Entrée pour garder la valeur actuelle/par défaut) :"
+                echo "------------------------------------------------------------------"
+                TEMP_CRED="${TARGET_CRED}.tmp"
+                > "$TEMP_CRED"
+                while IFS= read -r line || [ -n "$line" ]; do
+                    if echo "$line" | grep -qE '^[[:space:]]*(#|$)'; then
+                        echo "$line" >> "$TEMP_CRED"
+                        continue
+                    fi
+                    key=$(echo "$line" | cut -d '=' -f 1)
+                    current_val=$(echo "$line" | cut -d '=' -f 2-)
+                    printf "%s [%s] : " "$key" "$current_val" > /dev/tty
+                    read -r new_val < /dev/tty
+                    if [ -z "$new_val" ]; then
+                        echo "$line" >> "$TEMP_CRED"
+                    else
+                        echo "$key=$new_val" >> "$TEMP_CRED"
+                    fi
+                done < "$TARGET_CRED"
+                mv "$TEMP_CRED" "$TARGET_CRED"
+                chmod 600 "$TARGET_CRED"
+                log "[+]" "Configuration des credentials enregistrée et sécurisée dans $TARGET_CRED."
+            fi
         else
             log "[-]" "Échec du téléchargement du modèle credentials.env depuis GitHub."
             exit 1
@@ -100,33 +127,6 @@ if [ ! -f "$TARGET_CRED" ]; then
     fi
 else
     log "[*]" "Le fichier '$TARGET_CRED' existe déjà. Étape de recherche/téléchargement ignorée."
-fi
-
-if [ -f "$TARGET_CRED" ]; then
-    log "[*]" "Vérification et configuration interactive des variables de credentials..."
-    echo "------------------------------------------------------------------"
-    echo "Veuillez renseigner les valeurs pour chaque variable (Appuyez sur Entrée pour garder la valeur actuelle/par défaut) :"
-    echo "------------------------------------------------------------------"
-    TEMP_CRED="${TARGET_CRED}.tmp"
-    > "$TEMP_CRED"
-    while IFS= read -r line || [ -n "$line" ]; do
-        if echo "$line" | grep -qE '^[[:space:]]*(#|$)'; then
-            echo "$line" >> "$TEMP_CRED"
-            continue
-        fi
-        key=$(echo "$line" | cut -d '=' -f 1)
-        current_val=$(echo "$line" | cut -d '=' -f 2-)
-        printf "%s [%s] : " "$key" "$current_val" > /dev/tty
-        read -r new_val < /dev/tty
-        if [ -z "$new_val" ]; then
-            echo "$line" >> "$TEMP_CRED"
-        else
-            echo "$key=$new_val" >> "$TEMP_CRED"
-        fi
-    done < "$TARGET_CRED"
-    mv "$TEMP_CRED" "$TARGET_CRED"
-    chmod 600 "$TARGET_CRED"
-    log "[+]" "Configuration des credentials enregistrée et sécurisée dans $TARGET_CRED."
 fi
 
 set -a
