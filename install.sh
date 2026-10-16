@@ -18,10 +18,10 @@ log() {
 }
 
 log "[*]" "Mise a jours du systeme."
-apt-get update -y -qq > /dev/null
-apt-get upgrade -y -qq > /dev/null
-apt-get autoremove -y --purge -qq > /dev/null
-apt-get autoclean -y -qq > /dev/null
+apt-get update -y > /dev/null
+apt-get upgrade -y > /dev/null
+apt-get autoremove -y --purge > /dev/null
+apt-get autoclean -y > /dev/null
 log "[+]" "Mise a jours du systeme terminée."
 
 mkdir -p "$SOF_DIR" "$TEM_DIR"
@@ -1197,7 +1197,7 @@ log "[+]" "Commande 'kiwix' (ou 'kw') créée avec succès."
 log "[*]" "Création de la commande globale 'kolibri'..."
 cat << 'EOF' > /usr/local/bin/kolibri
 #!/bin/sh
-PATH_KOLIBRI="${PATH_KOLIBRI:-/etc/DomoNas/Docker/Kolibri}"
+PATH_KOLIBRI="${PATH_KOLIBRI:-/media/Runable/Docker/Kolibri}"
 PORT_KOLIBRI="${PORT_KOLIBRI:-1012}"
 mkdir -p "$PATH_KOLIBRI"
 case "$1" in
@@ -1283,7 +1283,7 @@ log "[+]" "Commande 'cyberchef' (ou 'cc') créée avec succès."
 log "[*]" "Création de la commande globale 'vaultwarden'..."
 cat << 'EOF' > /usr/local/bin/vaultwarden
 #!/bin/sh
-PATH_VAULTWARDEN="${PATH_VAULTWARDEN:-/etc/DomoNas/Docker/Vaultwarden}"
+PATH_VAULTWARDEN="${PATH_VAULTWARDEN:-/media/Runable/Docker/Vaultwarden}"
 PORT_VAULTWARDEN="${PORT_VAULTWARDEN:-1013}"
 mkdir -p "$PATH_VAULTWARDEN/ssl"
 case "$1" in
