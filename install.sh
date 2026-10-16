@@ -1,5 +1,5 @@
 #!/bin/sh
-#VERSION 202610161340
+#VERSION 202610161347
 set -eu
 
 if [ "$(id -u)" -ne 0 ]; then
@@ -276,8 +276,8 @@ sed -i 's/#start_due_daemon=yes/start_due_daemon=yes/' /etc/default/smartmontool
 cat << 'EOF' > /etc/smartd.conf
 DEVICESCAN -H -m root -M exec /usr/share/smartmontools/smartd-runner
 EOF
-systemctl enable smartd
-systemctl restart smartd
+systemctl enable smartmontools
+systemctl restart smartmontools
 log "[+]" "Smartmontools activé."
 
 log "[*]" "Configuration des capteurs de température..."
