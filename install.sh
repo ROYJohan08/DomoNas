@@ -58,7 +58,7 @@ if ! command -v docker &> /dev/null; then
     fi
 fi
 
-PACKAGES="cron watchdog glances smartmontools ddclient rsync cockpit git wget fail2ban iotop docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin webp imagemagick ffmpeg unzip p7zip-full unrar net-tools iperf samba python3 python3-pip python3-dev python3-psutil lm-sensors hddtemp"
+PACKAGES="cron watchdog glances smartmontools ddclient rsync cockpit git wget fail2ban iotop docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin webp imagemagick ffmpeg unzip p7zip-full unrar net-tools iperf samba python3 python3-pip python3-dev python3-psutil lm-sensors"
 for pkg in $PACKAGES; do
     if dpkg -s "$pkg" >/dev/null 2>&1; then
         log "[*]" "Paquet '$pkg' déjà installé."
