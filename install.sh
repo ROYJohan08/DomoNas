@@ -1,5 +1,5 @@
 #!/bin/sh
-#VERSION 202610161351
+#VERSION 202610161410
 set -eu
 
 if [ "$(id -u)" -ne 0 ]; then
@@ -388,6 +388,9 @@ log "[+]" "Gestion des tâches cron configurée avec succès."
 log "[*]" "Création de la commande globale 'lamp'..."
 cat << 'EOF' > /usr/local/bin/lamp
 #!/bin/sh
+set -a
+. "/etc/DomoNas/Credentials/credentials.env"
+set +a
 PATH_LAMP="${PATH_LAMP:-/media/Runable/Docker/Lamp}"
 PORT_LAMP="${PORT_LAMP:-81}"
 mkdir -p "$PATH_LAMP"
@@ -406,7 +409,7 @@ case "$1" in
             -p 3306:3306 \
             php:8.2-apache
         ;;
-        update)
+    update)
         docker rm -f lamp 2>/dev/null || true
         docker pull php:8.2-apache || echo ""
         docker run -d \
@@ -440,6 +443,9 @@ log "[+]" "Commande 'lamp' créée avec succès. Vous pouvez taper 'lamp create'
 log "[*]" "Création de la commande globale 'homeassistant'..."
 cat << 'EOF' > /usr/local/bin/homeassistant
 #!/bin/sh
+set -a
+. "/etc/DomoNas/Credentials/credentials.env"
+set +a
 PATH_HOMEASSISTANT="${PATH_HOMEASSISTANT:-/etc/DomoNas/Docker/HomeAssistant}"
 PORT_HOMEASSISTANT="${PORT_HOMEASSISTANT:-1000}"
 mkdir -p "$PATH_HOMEASSISTANT"
@@ -494,6 +500,9 @@ log "[+]" "Commande 'homeassistant' créée avec succès (utilisable via 'homeas
 log "[*]" "Création de la commande globale 'jellyfin'..."
 cat << 'EOF' > /usr/local/bin/jellyfin
 #!/bin/sh
+set -a
+. "/etc/DomoNas/Credentials/credentials.env"
+set +a
 PATH_JELLYFIN="${PATH_JELLYFIN:-/etc/DomoNas/Docker/Jellyfin}"
 PORT_JELLYFIN="${PORT_JELLYFIN:-1001}"
 mkdir -p "$PATH_JELLYFIN/config" "$PATH_JELLYFIN/cache"
@@ -552,6 +561,9 @@ log "[+]" "Commande 'jellyfin' créée avec succès (utilisable via 'jellyfin cr
 log "[*]" "Création de la commande globale 'transmission'..."
 cat << 'EOF' > /usr/local/bin/transmission
 #!/bin/sh
+set -a
+. "/etc/DomoNas/Credentials/credentials.env"
+set +a
 PATH_DOWNBOX="${PATH_DOWNBOX:-/media/Runable/Docker/DownBox}"
 PATH_TRANSMISSION="${PATH_TRANSMISSION:-/media/Runable/DownBox}"
 PORT_DOWNBOX="${PORT_DOWNBOX:-1002}"
@@ -602,7 +614,7 @@ case "$1" in
             -p "$PORT_DOWNBOX:8080" \
             haugene/transmission-openvpn-proxy:latest
         ;;
-        update)
+    update)
         docker rm -f transmission downboxproxy 2>/dev/null || true
         docker pull haugene/transmission-openvpn:latest || true
         docker pull haugene/transmission-openvpn-proxy:latest || true
@@ -664,6 +676,9 @@ log "[+]" "Commande 'transmission' (ou 'tr') créée avec succès."
 log "[*]" "Création de la commande globale 'seedbox'..."
 cat << 'EOF' > /usr/local/bin/seedbox
 #!/bin/sh
+set -a
+. "/etc/DomoNas/Credentials/credentials.env"
+set +a
 PATH_SEEDBOX="${PATH_SEEDBOX:-/etc/DomoNas/Docker/Seedbox}"
 PATH_TRANSMISSION="${PATH_TRANSMISSION:-/media/Runable/DownBox}"
 PORT_SEEDBOX="${PORT_SEEDBOX:-1003}"
@@ -699,7 +714,7 @@ case "$1" in
         sleep 3 # Laisse le temps au conteneur de s'initialiser
         docker exec seedbox cp -r /config/GUI /usr/share/transmission/public_html/web-control 2>/dev/null || true
         ;;
-        update)
+    update)
         docker rm -f seedbox 2>/dev/null || true
         docker pull lscr.io/linuxserver/transmission:latest || echo ""
         docker run -d \
@@ -748,6 +763,9 @@ log "[+]" "Commande 'seedbox' (ou 'sb') créée avec succès."
 log "[*]" "Création de la commande globale 'grocy'..."
 cat << 'EOF' > /usr/local/bin/grocy
 #!/bin/sh
+set -a
+. "/etc/DomoNas/Credentials/credentials.env"
+set +a
 PATH_GROCY="${PATH_GROCY:-/etc/DomoNas/Docker/Grocy}"
 PORT_GROCY="${PORT_GROCY:-1004}"
 mkdir -p "$PATH_GROCY"
@@ -763,7 +781,7 @@ case "$1" in
             -p "$PORT_GROCY:80" \
             lscr.io/linuxserver/grocy:latest
         ;;
-        update)
+    update)
         docker rm -f grocy 2>/dev/null || true
         docker pull lscr.io/linuxserver/grocy:latest || echo ""
         docker run -d \
@@ -794,6 +812,9 @@ log "[+]" "Commande 'grocy' créée avec succès."
 log "[*]" "Création de la commande globale 'portainer'..."
 cat << 'EOF' > /usr/local/bin/portainer
 #!/bin/sh
+set -a
+. "/etc/DomoNas/Credentials/credentials.env"
+set +a
 PATH_PORTAINER="${PATH_PORTAINER:-/etc/DomoNas/Docker/Portainer}"
 PORT_PORTAINER="${PORT_PORTAINER:-1005}"
 mkdir -p "$PATH_PORTAINER"
@@ -813,7 +834,7 @@ case "$1" in
             -v "$PATH_PORTAINER:/data" \
             portainer/portainer-ce:latest
         ;;
-        update)
+    update)
         docker rm -f portainer 2>/dev/null || true
         docker pull portainer/portainer-ce:latest || echo ""
         docker run -d \
@@ -849,6 +870,9 @@ log "[+]" "Commande 'portainer' (ou 'po') créée avec succès."
 log "[*]" "Création de la commande globale 'filebrowser'..."
 cat << 'EOF' > /usr/local/bin/filebrowser
 #!/bin/sh
+set -a
+. "/etc/DomoNas/Credentials/credentials.env"
+set +a
 PATH_FILEBROWSER="${PATH_FILEBROWSER:-/etc/DomoNas/Docker/Filebrowser}"
 PORT_FILEBROWSER="${PORT_FILEBROWSER:-1006}"
 mkdir -p "$PATH_FILEBROWSER/database" "$PATH_FILEBROWSER/config"
@@ -866,7 +890,7 @@ case "$1" in
             -p "$PORT_FILEBROWSER:80" \
             gtstef/filebrowser:latest
         ;;
-        update)
+    update)
         docker rm -f filebrowser 2>/dev/null || true
         docker pull gtstef/filebrowser:latest || echo " "
         docker run -d \
@@ -900,6 +924,9 @@ log "[+]" "Commande 'filebrowser' (ou 'fb') créée avec succès."
 log "[*]" "Création de la commande globale 'freshrss'..."
 cat << 'EOF' > /usr/local/bin/freshrss
 #!/bin/sh
+set -a
+. "/etc/DomoNas/Credentials/credentials.env"
+set +a
 PATH_FRESHRSS="${PATH_FRESHRSS:-/etc/DomoNas/Docker/FreshRSS}"
 PORT_FRESHRSS="${PORT_FRESHRSS:-1007}"
 mkdir -p "$PATH_FRESHRSS"
@@ -916,7 +943,7 @@ case "$1" in
             -v "$PATH_FRESHRSS:/var/www/FreshRSS" \
             freshrss/freshrss:latest
         ;;
-        update)
+    update)
         docker rm -f freshrss 2>/dev/null || true
         docker pull freshrss/freshrss:latest || echo ""
         docker run -d \
@@ -949,6 +976,9 @@ log "[+]" "Commande 'freshrss' (ou 'fr') créée avec succès."
 log "[*]" "Création de la commande globale 'mqtt'..."
 cat << 'EOF' > /usr/local/bin/mqtt
 #!/bin/sh
+set -a
+. "/etc/DomoNas/Credentials/credentials.env"
+set +a
 PATH_MQTT="${PATH_MQTT:-/etc/DomoNas/Docker/MQTT}"
 PORT_MQTT="${PORT_MQTT:-1015}"
 USERNAME_GENERAL="${USERNAME_GENERAL:-admin}"
@@ -1005,7 +1035,10 @@ ln -sf /usr/local/bin/mqtt /usr/local/bin/mq
 log "[+]" "Commande 'mqtt' (ou 'mq') créée avec succès."
 log "[*]" "Création de la commande globale 'gitea'..."
 cat << 'EOF' > /usr/local/bin/gitea
-#!/bin/ss
+#!/bin/sh
+set -a
+. "/etc/DomoNas/Credentials/credentials.env"
+set +a
 PATH_GITEA="${PATH_GITEA:-/etc/DomoNas/Docker/Gitea}"
 PORT_GITEA="${PORT_GITEA:-1010}"
 mkdir -p "$PATH_GITEA"
@@ -1057,6 +1090,9 @@ log "[+]" "Commande 'gitea' (ou 'gt') créée avec succès."
 log "[*]" "Création de la commande globale 'siyuan'..."
 cat << 'EOF' > /usr/local/bin/siyuan
 #!/bin/sh
+set -a
+. "/etc/DomoNas/Credentials/credentials.env"
+set +a
 PATH_SIYUAN="${PATH_SIYUAN:-/etc/DomoNas/Docker/SiYuan}"
 PORT_SIYUAN="${PORT_SIYUAN:-6806}"
 PASSWORD_GENERAL_HIGH="${PASSWORD_GENERAL_HIGH:-password}"
@@ -1113,6 +1149,9 @@ log "[+]" "Commande 'siyuan' (ou 'sy') créée avec succès."
 log "[*]" "Création de la commande globale 'myelectricaldata'..."
 cat << 'EOF' > /usr/local/bin/myelectricaldata
 #!/bin/sh
+set -a
+. "/etc/DomoNas/Credentials/credentials.env"
+set +a
 PATH_MED="${PATH_MED:-/etc/DomoNas/Docker/MyElectricalData/config.yaml}"
 PORT_MED="${PORT_MED:-5000}"
 mkdir -p "$(dirname "$PATH_MED")"
@@ -1158,6 +1197,9 @@ log "[+]" "Commande 'myelectricaldata' (ou 'med') créée avec succès."
 log "[*]" "Création de la commande globale 'kiwix'..."
 cat << 'EOF' > /usr/local/bin/kiwix
 #!/bin/sh
+set -a
+. "/etc/DomoNas/Credentials/credentials.env"
+set +a
 PATH_KIWIX="${PATH_KIWIX:-/media/Docs01/Kiwix}"
 PORT_KIWIX="${PORT_KIWIX:-1011}"
 mkdir -p "$PATH_KIWIX"
@@ -1205,6 +1247,9 @@ log "[+]" "Commande 'kiwix' (ou 'kw') créée avec succès."
 log "[*]" "Création de la commande globale 'kolibri'..."
 cat << 'EOF' > /usr/local/bin/kolibri
 #!/bin/sh
+set -a
+. "/etc/DomoNas/Credentials/credentials.env"
+set +a
 PATH_KOLIBRI="${PATH_KOLIBRI:-/media/Runable/Docker/Kolibri}"
 PORT_KOLIBRI="${PORT_KOLIBRI:-1012}"
 mkdir -p "$PATH_KOLIBRI"
@@ -1250,6 +1295,9 @@ log "[+]" "Commande 'kolibri' (ou 'kb') créée avec succès."
 log "[*]" "Création de la commande globale 'cyberchef'..."
 cat << 'EOF' > /usr/local/bin/cyberchef
 #!/bin/sh
+set -a
+. "/etc/DomoNas/Credentials/credentials.env"
+set +a
 PORT_CYBERCHEF="${PORT_CYBERCHEF:-8000}"
 case "$1" in
     create)
@@ -1291,6 +1339,9 @@ log "[+]" "Commande 'cyberchef' (ou 'cc') créée avec succès."
 log "[*]" "Création de la commande globale 'vaultwarden'..."
 cat << 'EOF' > /usr/local/bin/vaultwarden
 #!/bin/sh
+set -a
+. "/etc/DomoNas/Credentials/credentials.env"
+set +a
 PATH_VAULTWARDEN="${PATH_VAULTWARDEN:-/media/Runable/Docker/Vaultwarden}"
 PORT_VAULTWARDEN="${PORT_VAULTWARDEN:-1013}"
 mkdir -p "$PATH_VAULTWARDEN/ssl"
@@ -1354,6 +1405,9 @@ log "[+]" "Commande 'vaultwarden' (ou 'vw') créée avec succès."
 log "[*]" "Création de la commande globale 'immich'..."
 cat << 'EOF' > /usr/local/bin/immich
 #!/bin/sh
+set -a
+. "/etc/DomoNas/Credentials/credentials.env"
+set +a
 PATH_IMMICH="${PATH_IMMICH:-/media/Docs01/Immich}"
 PORT_IMMICH="${PORT_IMMICH:-1016}"
 USERNAME_GENERAL="${USERNAME_GENERAL:-admin}"
@@ -1465,6 +1519,12 @@ log "[+]" "Commande 'immich' (ou 'im') créée avec succès."
 #                log "[-]" "Échec lors de l'initialisation du service '$srv'."
 #            fi
 #        fi
+log "[*]" "Nettoyage des images Docker inutilisées..."
+if docker image prune -f >/dev/null 2>&1; then
+    log "[+]" "Images Docker inutilisées supprimées avec succès."
+else
+    log "[-]" "Échec lors du nettoyage des images Docker."
+fi
 #    fi
 #done
 #log "[+]" "Tous les services Docker ont été vérifiés et lancés."
