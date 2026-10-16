@@ -75,26 +75,31 @@ done
 
 mkdir -p "$CRE_DIR"
 TARGET_CRED="$CRE_DIR/credentials.env"
-log "[*]" "Recherche d'un fichier 'credentials.env' existant sur le système..."
-FOUND_CRED=""
-FOUND_CRED=$(find / -name "credentials.env" ! -path "$TARGET_CRED" ! -path "/proc/*" ! -path "/sys/*" ! -path "/dev/*" 2>/dev/null | head -n 1)
-if [ -n "$FOUND_CRED" ]; then
-    log "[*]" "Fichier 'credentials.env' trouvé : $FOUND_CRED"
-    if [ ! -f "$TARGET_CRED" ] || [ "$FOUND_CRED" -nt "$TARGET_CRED" ]; then
-        cp "$FOUND_CRED" "$TARGET_CRED"
-        log "[+]" "Le fichier trouvé est plus récent (ou inexistant dans le cible). Copie effectuée dans $TARGET_CRED."
+if [ ! -f "$TARGET_CRED" ]; then
+    log "[*]" "Recherche d'un fichier 'credentials.env' existant sur le système..."
+    FOUND_CRED=""
+    FOUND_CRED=$(find / -name "credentials.env" ! -path "$TARGET_CRED" ! -path "/proc/*" ! -path "/sys/*" ! -path "/dev/*" 2>/dev/null | head -n 1)
+    if [ -n "$FOUND_CRED" ]; then
+        log "[*]" "Fichier 'credentials.env' trouvé : $FOUND_CRED"
+        if [ "$FOUND_CRED" -nt "$TARGET_CRED" ]; then
+            cp "$FOUND_CRED" "$TARGET_CRED"
+            log "[+]" "Le fichier trouvé est plus récent. Copie effectuée dans $TARGET_CRED."
+        else
+            cp "$FOUND_CRED" "$TARGET_CRED"
+            log "[+]" "Copie effectuée depuis $FOUND_CRED vers $TARGET_CRED."
+        fi
     else
-        log "[*]" "Le fichier 'credentials.env' local est déjà à jour par rapport à la source trouvée."
+        log "[!]" "Aucun fichier 'credentials.env' trouvé sur le système."
+        log "[*]" "Téléchargement du modèle depuis GitHub..."
+        if curl -fsSL "https://raw.githubusercontent.com/ROYJohan08/DomoNas/refs/heads/main/credentials.env" -o "$TARGET_CRED"; then
+            log "[+]" "Modèle téléchargé avec succès dans $TARGET_CRED."
+        else
+            log "[-]" "Échec du téléchargement du modèle credentials.env depuis GitHub."
+            exit 1
+        fi
     fi
 else
-    log "[!]" "Aucun fichier 'credentials.env' trouvé sur le système."
-    log "[*]" "Téléchargement du modèle depuis GitHub..."
-    if curl -fsSL "https://raw.githubusercontent.com/ROYJohan08/DomoNas/refs/heads/main/credentials.env" -o "$TARGET_CRED"; then
-        log "[+]" "Modèle téléchargé avec succès dans $TARGET_CRED."
-    else
-        log "[-]" "Échec du téléchargement du modèle credentials.env depuis GitHub."
-        exit 1
-    fi
+    log "[*]" "Le fichier '$TARGET_CRED' existe déjà. Étape de recherche/téléchargement ignorée."
 fi
 
 if [ -f "$TARGET_CRED" ]; then
