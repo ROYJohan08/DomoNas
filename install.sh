@@ -427,6 +427,7 @@ case "$1" in
             -e TZ=CET \
             -v "$PATH_LAMP:/var/www/html" \
             -v /media/Docs01/Maps/20260726_Europa.pmtiles:/var/www/html/europe.pmtiles:ro \
+			-v /etc/Domonas/Credentials/credentials.env:/etc/Domonas/Credentials/credentials.env \
             -v /media:/media \
             -p "$PORT_LAMP:80" \
             -p 3306:3306 \
