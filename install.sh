@@ -1650,7 +1650,7 @@ ln -sf /usr/local/bin/immich /usr/local/bin/im
 log "[+]" "Création de 'immich'"
 
 log "[*]" "Vérification de l'état des conteneurs Docker..."
-SERVICES="lamp homeassistant jellyfin downbox seedbox grocy portainer filebrowser freshrss mqtt gitea siyuan myelectricaldata kiwix kolibri cyberchef vaultwarden immich"
+SERVICES="lamp homeassistant jellyfin downbox seedbox grocy portainer filebrowser freshrss mqtt gitea siyuan myelectricaldata kiwix kolibri cyberchef vaultwarden"
 for srv in $SERVICES; do
     if [ -x "/usr/local/bin/$srv" ]; then
         container_name="$srv"
