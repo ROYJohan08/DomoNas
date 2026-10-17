@@ -6,6 +6,7 @@ if [ "$(id -u)" -ne 0 ]; then
     echo "Droits insuffisants : exécuter ce script en tant que root." >&2
     exit 1
 fi
+
 DEBUG=1
 BASE_DIR="/etc/DomoNas"
 LOG_DIR="$BASE_DIR/Logs"
@@ -15,32 +16,41 @@ CRE_DIR="$BASE_DIR/Credentials"
 
 log() {
     mkdir -p "$LOG_DIR"
+    echo "$1 - $(date +'%Y-%m-%d %H:%M:%S') - $2" >> "${LOG_DIR}/$(date +'%Y%m%d')-INSTALL.log"
     if [ "$DEBUG" = "1" ]; then
-        echo "[$1] - $(date +'%Y-%m-%d %H:%M:%S') - $2"
+		case "$1" in
+			[+]) printf " \033[32m[PASS]\033[0m : $2 \n" ;;
+			[~]) printf " \033[33m[WAIT]\033[0m : $2 \n" ;;
+			[-]) printf " \033[31m[FAIL]\033[0m : $2 \n" ;;
+		esac
     fi
-    echo "[$1] - $(date +'%Y-%m-%d %H:%M:%S') - $2" >> "${LOG_DIR}/$(date +'%Y%m%d')-INSTALL.log"
 }
 
-log "[*]" "Mise a jours du systeme."
+log "[*]" "Mise a jours du systeme"
 apt-get update -y > /dev/null
 apt-get upgrade -y > /dev/null
 apt-get autoremove -y --purge > /dev/null
 apt-get autoclean -y > /dev/null
-log "[+]" "Mise a jours du systeme terminée."
+log "[+]" "Mise a jours du systeme"
 
-mkdir -p "$SOF_DIR" "$TEM_DIR"
+log "[*]" "Création de l'arboressance"
+mkdir -p "$BASE_DIR" "$LOG_DIR" "$TEM_DIR" "$SOF_DIR" "$CRE_DIR"
+log "[+]" "Création de l'arboressance"
+
+log "[*]" "Mise a jour de l'installateur"
 wget -q -O "$TEM_DIR/install.sh" https://raw.githubusercontent.com/ROYJohan08/DomoNas/refs/heads/main/install.sh > /dev/null
 if [ ! -f "$SOF_DIR/install.sh" ] || [ "$TEM_DIR/install.sh" -nt "$SOF_DIR/install.sh" ]; then
     cp "$TEM_DIR/install.sh" "$SOF_DIR/install.sh"
-    log "[!]" "install.sh a été mis à jour dans $SOF_DIR."
+    log "[+]" "Mise a jour de l'installateur"
 else
-    log "[!]" "Le fichier dans $SOF_DIR est déjà à jour ou plus récent."
+    log "[+]" "Mise a jour de l'installateur"
 fi
 rm -f "$TEM_DIR/install.sh"
 
-log "[*]" "Vérification de docker."
+log "[*]" "Vérification de docker"
 if ! command -v docker &> /dev/null; then
-    log "[!]" "Docker n'est pas installé. Lancement de l'installation..."
+    log "[~]" "Vérification de docker"
+    log "[*]" "Installation de docker"
     apt-get install -y ca-certificates curl gnupg
     install -m 0755 -d /etc/apt/keyrings
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
@@ -52,50 +62,51 @@ if ! command -v docker &> /dev/null; then
     apt-get update -y
     apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
     if [ $? -eq 0 ]; then
-        log "[+]" "Docker installé avec succès."
+        log "[+]" "Installation de docker"
     else
-        log "[-]" "Échec lors de l'installation de Docker."
+        log "[-]" "Installation de docker"
         exit 1
     fi
 fi
 
 PACKAGES="cron watchdog glances smartmontools ddclient rsync cockpit git wget fail2ban iotop docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin webp imagemagick ffmpeg unzip p7zip-full unrar net-tools iperf samba python3 python3-pip python3-dev python3-psutil lm-sensors"
 for pkg in $PACKAGES; do
+	log "[*]" "Vérification de '$pkg'"
     if dpkg -s "$pkg" >/dev/null 2>&1; then
-        log "[*]" "Paquet '$pkg' déjà installé."
+        log "[+]" "Vérification de '$pkg'"
     else
-        log "[!]" "Paquet '$pkg' absent. Installation en cours..."
+        log "[~]" "Vérification de '$pkg'"
+		log "[*]" "Installation de '$pkg'"
         if apt-get install -y "$pkg" > /dev/null; then
-            log "[+]" "Paquet '$pkg' installé avec succès."
+            log "[+]" "Installation de '$pkg'"
         else
-            log "[-]" "Échec lors de l'installation du paquet '$pkg'."
+            log "[-]" "Installation de '$pkg'"
             exit 1
         fi
     fi
 done
 
+
 mkdir -p "$CRE_DIR"
 TARGET_CRED="$CRE_DIR/credentials.env"
+log "[*]" "Vérification de 'credentials.env'"
 if [ ! -f "$TARGET_CRED" ]; then
-    log "[*]" "Recherche d'un fichier 'credentials.env' existant sur le système..."
+	log "[~]" "Vérification de 'credentials.env'"
+    log "[*]" "Recherche d'un fichier 'credentials.env' sur le système"
     FOUND_CRED=""
     FOUND_CRED=$(find / -name "credentials.env" ! -path "$TARGET_CRED" ! -path "/proc/*" ! -path "/sys/*" ! -path "/dev/*" 2>/dev/null | head -n 1)
     if [ -n "$FOUND_CRED" ]; then
-        log "[*]" "Fichier 'credentials.env' trouvé : $FOUND_CRED"
         if [ "$FOUND_CRED" -nt "$TARGET_CRED" ]; then
             cp "$FOUND_CRED" "$TARGET_CRED"
-            log "[+]" "Le fichier trouvé est plus récent. Copie effectuée dans $TARGET_CRED."
-        else
-            cp "$FOUND_CRED" "$TARGET_CRED"
-            log "[+]" "Copie effectuée depuis $FOUND_CRED vers $TARGET_CRED."
+            log "[+]" "Recherche d'un fichier 'credentials.env' sur le système"
         fi
     else
-        log "[!]" "Aucun fichier 'credentials.env' trouvé sur le système."
-        log "[*]" "Téléchargement du modèle depuis GitHub..."
+        log "[~]" "Recherche d'un fichier 'credentials.env' sur le système"
+        log "[*]" "Téléchargement du modèle depuis GitHub"
         if curl -fsSL "https://raw.githubusercontent.com/ROYJohan08/DomoNas/refs/heads/main/credentials.env" -o "$TARGET_CRED"; then
-            log "[+]" "Modèle téléchargé avec succès dans $TARGET_CRED."
+            log "[+]" "Téléchargement du modèle depuis GitHub"
             if [ -f "$TARGET_CRED" ]; then
-                log "[*]" "Vérification et configuration interactive des variables de credentials..."
+                log "[*]" "Configuration interactive"
                 echo "------------------------------------------------------------------"
                 echo "Veuillez renseigner les valeurs pour chaque variable (Appuyez sur Entrée pour garder la valeur actuelle/par défaut) :"
                 echo "------------------------------------------------------------------"
@@ -118,23 +129,23 @@ if [ ! -f "$TARGET_CRED" ]; then
                 done < "$TARGET_CRED"
                 mv "$TEMP_CRED" "$TARGET_CRED"
                 chmod 600 "$TARGET_CRED"
-                log "[+]" "Configuration des credentials enregistrée et sécurisée dans $TARGET_CRED."
+                log "[+]" "Configuration interactive"
             fi
         else
-            log "[-]" "Échec du téléchargement du modèle credentials.env depuis GitHub."
+            log "[-]" "Téléchargement du modèle depuis GitHub"
             exit 1
         fi
     fi
 else
-    log "[*]" "Le fichier '$TARGET_CRED' existe déjà. Étape de recherche/téléchargement ignorée."
+    log "[+]" "Vérification de 'credentials.env'"
 fi
-
+log "[*]" "import de 'credentials.env'"
 set -a
 . "$TARGET_CRED"
 set +a
+log "[+]" "import de 'credentials.env'"
 
-log "[*]" "Début de la configuration des servicesac.."
-log "[*]" "Configuration de Samba avec vos partagesac.."
+log "[*]" "Configuration de Samba"
 [ ! -f /etc/samba/smb.conf.bak ] && cp /etc/samba/smb.conf /etc/samba/smb.conf.bak
 cat << 'EOF' > /etc/samba/smb.conf
 [global]
@@ -224,9 +235,9 @@ EOF
 chown -R royjohan:royjohan /media 2>/dev/null || true
 systemctl restart smbd nmbd >/dev/null
 systemctl enable smbd nmbd >/dev/null
-log "[+]" "Samba configuré et redémarré."
+log "[+]" "Configuration de Samba"
 
-log "[*]" "Configuration du port Cockpit ($PORT_COCKPIT)..."
+log "[*]" "Configuration de Cockpit"
 PORT_COCKPIT="${PORT_COCKPIT:-9090}"
 mkdir -p /etc/systemd/system/cockpit.socket.d
 cat << EOF > /etc/systemd/system/cockpit.socket.d/listen.conf
@@ -237,9 +248,9 @@ EOF
 systemctl daemon-reload
 systemctl restart cockpit.socket
 systemctl enable --now cockpit.socket
-log "[+]" "Cockpit configuré sur le port $PORT_COCKPIT."
+log "[+]" "Configuration de Cockpit"
 
-log "[*]" "Configuration de DDClient..."
+log "[*]" "Configuration de DDClient"
 USERNAME_DYDNS="${USERNAME_DYDNS:-royjohan.fr-dsm}"
 PASSWORD_DYDNS="${PASSWORD_DYDNS:-123456789}"
 DOMAIL_DYDNS="${DOMAIL_DYDNS:-dsm.royjohan.fr}"
@@ -252,9 +263,9 @@ $DOMAIL_DYDNS
 EOF
 systemctl enable ddclient >/dev/null
 systemctl restart ddclient >/dev/null
-log "[+]" "DDClient configuré pour le domaine $DOMAIL_DYDNS."
+log "[+]" "Configuration de DDClient"
 
-log "[*]" "Configuration de Fail2ban..."
+log "[*]" "Configuration de Fail2ban"
 cat << 'EOF' > /etc/fail2ban/jail.local
 [DEFAULT]
 bantime  = 1h
@@ -269,23 +280,22 @@ backend = %(sshd_backend)s
 EOF
 systemctl restart fail2ban >/dev/null
 systemctl enable fail2ban >/dev/null
-log "[+]" "Fail2ban configuré et activé."
+log "[+]" "Configuration de Fail2ban"
 
-log "[*]" "Configuration de Smartmontools..."
+log "[*]" "Configuration de Smartmontools"
 sed -i 's/#start_due_daemon=yes/start_due_daemon=yes/' /etc/default/smartmontools
 cat << 'EOF' > /etc/smartd.conf
 DEVICESCAN -H -m root -M exec /usr/share/smartmontools/smartd-runner
 EOF
 systemctl enable smartmontools >/dev/null
 systemctl restart smartmontools >/dev/null
-log "[+]" "Smartmontools activé."
+log "[+]" "Configuration de Smartmontools"
 
-log "[*]" "Configuration des capteurs de température..."
+log "[*]" "Configuration des capteurs de température"
 sensors-detect --auto > /dev/null 2>&1 || true
-log "[+]" "Capteurs initialisés."
+log "[+]" "Configuration des capteurs de température"
 
-log "[*]" "Création du script de réparation réseau pour Watchdog..."
-mkdir -p "$SOF_DIR"
+log "[*]" "Création du script de réparation réseau pour Watchdog"
 cat << 'EOF' > "$SOF_DIR/fix-network.sh"
 #!/bin/bash
 LOG_FILE="/var/log/network-repair.log"
@@ -301,9 +311,9 @@ else
 fi
 EOF
 chmod +x "$SOF_DIR/fix-network.sh"
-log "[+]" "Script fix-network.sh créé et rendu exécutable dans $SOF_DIR."
+log "[+]" "Création du script de réparation réseau pour Watchdog"
 
-log "[*]" "Mise à jour de la configuration de Watchdog..."
+log "[*]" "Configuration de Watchdog"
 cat << EOF > /etc/watchdog.conf
 watchdog-device = /dev/watchdog
 max-load-1 = 24
@@ -317,9 +327,9 @@ modprobe softdog 2>/dev/null || true
 echo "softdog" > /etc/modules-load.d/softdog.conf
 systemctl enable watchdog >/dev/null
 systemctl restart watchdog >/dev/null
-log "[+]" "Watchdog configuré avec le script pointant vers $SOF_DIR/fix-network.sh."
-log "[*]" "Configuration du service systemd pour Glancesac.."
+log "[+]" "Configuration de Watchdog"
 
+log "[*]" "Configuration de Glances"
 cat << 'EOF' > /etc/systemd/system/glancesacservice
 [Unit]
 Description=Glances (Web Server Mode)
@@ -336,8 +346,8 @@ EOF
 systemctl daemon-reload >/dev/null
 systemctl enable glancesacservice >/dev/null
 systemctl restart glancesacservice >/dev/null
-log "[+]" "Glances configuré et démarré en mode Web (accessible par défaut sur le port 61208)."
-log "[*]" "Recherche et montage automatique des disques branchés..."
+log "[+]" "Configuration de Glances"
+
 lsblk -rno NAME,MOUNTPOINT,LABEL,TYPE,UUID | while read -r name mountpoint label type uuid; do
     if [ "$type" = "part" ] && [ -z "$mountpoint" ]; then
         if [ -n "$label" ] && [ "$label" != "null" ]; then
@@ -346,12 +356,11 @@ lsblk -rno NAME,MOUNTPOINT,LABEL,TYPE,UUID | while read -r name mountpoint label
             disk_name="$name"
         fi
         target_dir="/media/$disk_name"
-        log "[*]" "Détection du disque /dev/$name (Label: ${label:-Aucun}). Montage dans $target_dir..."
+        log "[*]" "Montage du disque /dev/$name ${label:-Aucun}"
         mkdir -p "$target_dir"
         if mount "/dev/$name" "$target_dir"; then
-            log "[+]" "Disque /dev/$name monté avec succès sur $target_dir."
+            log "[+]" "Montage du disque /dev/$name ${label:-Aucun}"
             if [ -n "$uuid" ] && ! grep -q "$uuid" /etc/fstab; then
-                # Détection automatique du type de système de fichiers (ext4, ntfs, exfat, vfat, etc.)
                 fstype=$(blkid -s TYPE -o value "/dev/$name")
                 if [ -n "$fstype" ]; then
                     echo "UUID=$uuid $target_dir $fstype defaults,nofail 0 2" >> /etc/fstab
@@ -359,22 +368,24 @@ lsblk -rno NAME,MOUNTPOINT,LABEL,TYPE,UUID | while read -r name mountpoint label
                 fi
             fi
         else
-            log "[-]" "Échec du montage du disque /dev/$name sur $target_dir."
+            log "[-]" "Montage du disque /dev/$name ${label:-Aucun}"
         fi
     fi
 done
 chown -R royjohan:royjohan /media 2>/dev/null || true
-log "[+]" "Montage des disques externes terminé."
-log "[*]" "Configuration des tâches cron..."
+
 CRON_TMP="/tmp/root_crontab_doponas"
 crontab -l 2>/dev/null > "$CRON_TMP" || true
 add_cron_job() {
     cron_line="$1"
+	log "[*]" "Vérification de la tâches cron : $cron_line"
     if ! grep -Fqx "$cron_line" "$CRON_TMP"; then
+		log "[~]" "Vérification de la tâches cron : $cron_line"
+		log "[*]" "Installation de la tâches cron : $cron_line"
         echo "$cron_line" >> "$CRON_TMP"
-        log "[+]" "Ajout de la tâche cron : $cron_line"
+        log "[+]" "Installation de la tâches cron : $cron_line"
     else
-        log "[*]" "La tâche cron existe déjà : $cron_line"
+        log "[+]" "Vérification de la tâches cron : $cron_line"
     fi
 }
 add_cron_job "@reboot glances -w &"
@@ -383,9 +394,8 @@ add_cron_job "@reboot mount -a --onlyonce"
 add_cron_job "50 6 * * * $SOF_DIR/archive.sh &"
 crontab "$CRON_TMP"
 rm -f "$CRON_TMP"
-log "[+]" "Gestion des tâches cron configurée avec succès."
 
-log "[*]" "Création de la commande globale 'lamp'..."
+log "[*]" "Création de 'lamp'"
 cat << 'EOF' > /usr/local/bin/lamp
 #!/bin/sh
 set -a
@@ -439,14 +449,15 @@ case "$1" in
 esac
 EOF
 chmod +x /usr/local/bin/lamp
-log "[+]" "Commande 'lamp' créée avec succès. Vous pouvez taper 'lamp create', 'lamp start', etc. de n'importe où."
-log "[*]" "Création de la commande globale 'homeassistant'..."
+log "[+]" "Création de 'lamp'"
+
+log "[*]" "Création de 'homeassistant'"
 cat << 'EOF' > /usr/local/bin/homeassistant
 #!/bin/sh
 set -a
 . "/etc/DomoNas/Credentials/credentials.env"
 set +a
-PATH_HOMEASSISTANT="${PATH_HOMEASSISTANT:-/etc/DomoNas/Docker/HomeAssistant}"
+PATH_HOMEASSISTANT="${PATH_HOMEASSISTANT:-/media/Runable/Docker/HomeAssistant}"
 PORT_HOMEASSISTANT="${PORT_HOMEASSISTANT:-1000}"
 mkdir -p "$PATH_HOMEASSISTANT"
 case "$1" in
@@ -496,14 +507,14 @@ case "$1" in
 esac
 EOF
 chmod +x /usr/local/bin/homeassistant
-log "[+]" "Commande 'homeassistant' créée avec succès (utilisable via 'homeassistant create', etc.)."
-log "[*]" "Création de la commande globale 'jellyfin'..."
+log "[+]" "Création de 'homeassistant'"
+log "[*]" "Création de 'jellyfin'"
 cat << 'EOF' > /usr/local/bin/jellyfin
 #!/bin/sh
 set -a
 . "/etc/DomoNas/Credentials/credentials.env"
 set +a
-PATH_JELLYFIN="${PATH_JELLYFIN:-/etc/DomoNas/Docker/Jellyfin}"
+PATH_JELLYFIN="${PATH_JELLYFIN:-/media/Runable/Docker/Jellyfin}"
 PORT_JELLYFIN="${PORT_JELLYFIN:-1001}"
 mkdir -p "$PATH_JELLYFIN/config" "$PATH_JELLYFIN/cache"
 case "$1" in
@@ -557,9 +568,9 @@ case "$1" in
 esac
 EOF
 chmod +x /usr/local/bin/jellyfin
-log "[+]" "Commande 'jellyfin' créée avec succès (utilisable via 'jellyfin create', etc.)."
-log "[*]" "Création de la commande globale 'transmission'..."
-cat << 'EOF' > /usr/local/bin/transmission
+log "[+]" "Création de 'jellyfin'"
+log "[*]" "Création de 'downbox'"
+cat << 'EOF' > /usr/local/bin/downbox
 #!/bin/sh
 set -a
 . "/etc/DomoNas/Credentials/credentials.env"
@@ -670,16 +681,16 @@ case "$1" in
         ;;
 esac
 EOF
-chmod +x /usr/local/bin/transmission
-ln -sf /usr/local/bin/transmission /usr/local/bin/tr
-log "[+]" "Commande 'transmission' (ou 'tr') créée avec succès."
-log "[*]" "Création de la commande globale 'seedbox'..."
+chmod +x /usr/local/bin/downbox
+ln -sf /usr/local/bin/downbox /usr/local/bin/db
+log "[+]" "Création de 'downbox'"
+log "[*]" "Création de 'seedbox'"
 cat << 'EOF' > /usr/local/bin/seedbox
 #!/bin/sh
 set -a
 . "/etc/DomoNas/Credentials/credentials.env"
 set +a
-PATH_SEEDBOX="${PATH_SEEDBOX:-/etc/DomoNas/Docker/Seedbox}"
+PATH_SEEDBOX="${PATH_SEEDBOX:-/media/Runable/Docker/Seedbox}"
 PATH_TRANSMISSION="${PATH_TRANSMISSION:-/media/Runable/DownBox}"
 PORT_SEEDBOX="${PORT_SEEDBOX:-1003}"
 USERNAME_GENERAL="${USERNAME_GENERAL:-admin}"
@@ -759,14 +770,15 @@ esac
 EOF
 chmod +x /usr/local/bin/seedbox
 ln -sf /usr/local/bin/seedbox /usr/local/bin/sb
-log "[+]" "Commande 'seedbox' (ou 'sb') créée avec succès."
-log "[*]" "Création de la commande globale 'grocy'..."
+log "[+]" "Création de 'seedbox'"
+
+log "[*]" "Création de 'grocy'"
 cat << 'EOF' > /usr/local/bin/grocy
 #!/bin/sh
 set -a
 . "/etc/DomoNas/Credentials/credentials.env"
 set +a
-PATH_GROCY="${PATH_GROCY:-/etc/DomoNas/Docker/Grocy}"
+PATH_GROCY="${PATH_GROCY:-/media/Runable/Docker/Grocy}"
 PORT_GROCY="${PORT_GROCY:-1004}"
 mkdir -p "$PATH_GROCY"
 case "$1" in
@@ -808,14 +820,14 @@ case "$1" in
 esac
 EOF
 chmod +x /usr/local/bin/grocy
-log "[+]" "Commande 'grocy' créée avec succès."
-log "[*]" "Création de la commande globale 'portainer'..."
+log "[+]" "Création de 'grocy'"
+log "[*]" "Création de 'portainer'"
 cat << 'EOF' > /usr/local/bin/portainer
 #!/bin/sh
 set -a
 . "/etc/DomoNas/Credentials/credentials.env"
 set +a
-PATH_PORTAINER="${PATH_PORTAINER:-/etc/DomoNas/Docker/Portainer}"
+PATH_PORTAINER="${PATH_PORTAINER:-/media/Runable/Docker/Portainer}"
 PORT_PORTAINER="${PORT_PORTAINER:-1005}"
 mkdir -p "$PATH_PORTAINER"
 case "$1" in
@@ -866,14 +878,15 @@ esac
 EOF
 chmod +x /usr/local/bin/portainer
 ln -sf /usr/local/bin/portainer /usr/local/bin/po
-log "[+]" "Commande 'portainer' (ou 'po') créée avec succès."
-log "[*]" "Création de la commande globale 'filebrowser'..."
+log "[+]" "Création de 'portainer'"
+
+log "[*]" "Création de 'filebrowser'"
 cat << 'EOF' > /usr/local/bin/filebrowser
 #!/bin/sh
 set -a
 . "/etc/DomoNas/Credentials/credentials.env"
 set +a
-PATH_FILEBROWSER="${PATH_FILEBROWSER:-/etc/DomoNas/Docker/Filebrowser}"
+PATH_FILEBROWSER="${PATH_FILEBROWSER:-/media/Runable/Docker/Filebrowser}"
 PORT_FILEBROWSER="${PORT_FILEBROWSER:-1006}"
 mkdir -p "$PATH_FILEBROWSER/database" "$PATH_FILEBROWSER/config"
 case "$1" in
@@ -920,14 +933,15 @@ esac
 EOF
 chmod +x /usr/local/bin/filebrowser
 ln -sf /usr/local/bin/filebrowser /usr/local/bin/fb
-log "[+]" "Commande 'filebrowser' (ou 'fb') créée avec succès."
-log "[*]" "Création de la commande globale 'freshrss'..."
+log "[+]" "Création de 'filebrowser'"
+
+log "[*]" "Création de 'freshrss'"
 cat << 'EOF' > /usr/local/bin/freshrss
 #!/bin/sh
 set -a
 . "/etc/DomoNas/Credentials/credentials.env"
 set +a
-PATH_FRESHRSS="${PATH_FRESHRSS:-/etc/DomoNas/Docker/FreshRSS}"
+PATH_FRESHRSS="${PATH_FRESHRSS:-/media/Runable/Docker/FreshRSS}"
 PORT_FRESHRSS="${PORT_FRESHRSS:-1007}"
 mkdir -p "$PATH_FRESHRSS"
 case "$1" in
@@ -972,14 +986,15 @@ esac
 EOF
 chmod +x /usr/local/bin/freshrss
 ln -sf /usr/local/bin/freshrss /usr/local/bin/fr
-log "[+]" "Commande 'freshrss' (ou 'fr') créée avec succès."
-log "[*]" "Création de la commande globale 'mqtt'..."
+log "[+]" "Création de 'freshrss'"
+
+log "[*]" "Création de 'mqtt'"
 cat << 'EOF' > /usr/local/bin/mqtt
 #!/bin/sh
 set -a
 . "/etc/DomoNas/Credentials/credentials.env"
 set +a
-PATH_MQTT="${PATH_MQTT:-/etc/DomoNas/Docker/MQTT}"
+PATH_MQTT="${PATH_MQTT:-/media/Runable/Docker/MQTT}"
 PORT_MQTT="${PORT_MQTT:-1015}"
 USERNAME_GENERAL="${USERNAME_GENERAL:-admin}"
 PASSWORD_GENERAL_HIGH="${PASSWORD_GENERAL_HIGH:-administrateur}"
@@ -1032,14 +1047,15 @@ esac
 EOF
 chmod +x /usr/local/bin/mqtt
 ln -sf /usr/local/bin/mqtt /usr/local/bin/mq
-log "[+]" "Commande 'mqtt' (ou 'mq') créée avec succès."
-log "[*]" "Création de la commande globale 'gitea'..."
+log "[+]" "Création de 'mqtt'"
+
+log "[*]" "Création de 'gitea'"
 cat << 'EOF' > /usr/local/bin/gitea
 #!/bin/sh
 set -a
 . "/etc/DomoNas/Credentials/credentials.env"
 set +a
-PATH_GITEA="${PATH_GITEA:-/etc/DomoNas/Docker/Gitea}"
+PATH_GITEA="${PATH_GITEA:-/media/Runable/Docker/Gitea}"
 PORT_GITEA="${PORT_GITEA:-1010}"
 mkdir -p "$PATH_GITEA"
 case "$1" in
@@ -1086,14 +1102,15 @@ esac
 EOF
 chmod +x /usr/local/bin/gitea
 ln -sf /usr/local/bin/gitea /usr/local/bin/gt
-log "[+]" "Commande 'gitea' (ou 'gt') créée avec succès."
-log "[*]" "Création de la commande globale 'siyuan'..."
+log "[+]" "Création de 'gitea'"
+
+log "[*]" "Création de 'siyuan'"
 cat << 'EOF' > /usr/local/bin/siyuan
 #!/bin/sh
 set -a
 . "/etc/DomoNas/Credentials/credentials.env"
 set +a
-PATH_SIYUAN="${PATH_SIYUAN:-/etc/DomoNas/Docker/SiYuan}"
+PATH_SIYUAN="${PATH_SIYUAN:-/media/Runable/Docker/SiYuan}"
 PORT_SIYUAN="${PORT_SIYUAN:-6806}"
 PASSWORD_GENERAL_HIGH="${PASSWORD_GENERAL_HIGH:-password}"
 mkdir -p "$PATH_SIYUAN"
@@ -1145,14 +1162,15 @@ esac
 EOF
 chmod +x /usr/local/bin/siyuan
 ln -sf /usr/local/bin/siyuan /usr/local/bin/sy
-log "[+]" "Commande 'siyuan' (ou 'sy') créée avec succès."
-log "[*]" "Création de la commande globale 'myelectricaldata'..."
+log "[+]" "Création de 'siyuan'"
+
+log "[*]" "Création de 'myelectricaldata'"
 cat << 'EOF' > /usr/local/bin/myelectricaldata
 #!/bin/sh
 set -a
 . "/etc/DomoNas/Credentials/credentials.env"
 set +a
-PATH_MED="${PATH_MED:-/etc/DomoNas/Docker/MyElectricalData/config.yaml}"
+PATH_MED="${PATH_MED:-/media/Runable/Docker/MyElectricalData/config.yaml}"
 PORT_MED="${PORT_MED:-5000}"
 mkdir -p "$(dirname "$PATH_MED")"
 case "$1" in
@@ -1193,8 +1211,9 @@ esac
 EOF
 chmod +x /usr/local/bin/myelectricaldata
 ln -sf /usr/local/bin/myelectricaldata /usr/local/bin/med
-log "[+]" "Commande 'myelectricaldata' (ou 'med') créée avec succès."
-log "[*]" "Création de la commande globale 'kiwix'..."
+log "[+]" "Création de 'myelectricaldata'"
+
+log "[*]" "Création de 'kiwix'"
 cat << 'EOF' > /usr/local/bin/kiwix
 #!/bin/sh
 set -a
@@ -1243,8 +1262,9 @@ esac
 EOF
 chmod +x /usr/local/bin/kiwix
 ln -sf /usr/local/bin/kiwix /usr/local/bin/kw
-log "[+]" "Commande 'kiwix' (ou 'kw') créée avec succès."
-log "[*]" "Création de la commande globale 'kolibri'..."
+log "[+]" "Création de 'kiwix'"
+
+log "[*]" "Création de 'kolibri'"
 cat << 'EOF' > /usr/local/bin/kolibri
 #!/bin/sh
 set -a
@@ -1291,8 +1311,9 @@ esac
 EOF
 chmod +x /usr/local/bin/kolibri
 ln -sf /usr/local/bin/kolibri /usr/local/bin/kb
-log "[+]" "Commande 'kolibri' (ou 'kb') créée avec succès."
-log "[*]" "Création de la commande globale 'cyberchef'..."
+log "[+]" "Création de 'kolibri'"
+
+log "[*]" "Création de 'cyberchef'"
 cat << 'EOF' > /usr/local/bin/cyberchef
 #!/bin/sh
 set -a
@@ -1335,8 +1356,9 @@ esac
 EOF
 chmod +x /usr/local/bin/cyberchef
 ln -sf /usr/local/bin/cyberchef /usr/local/bin/cc
-log "[+]" "Commande 'cyberchef' (ou 'cc') créée avec succès."
-log "[*]" "Création de la commande globale 'vaultwarden'..."
+log "[+]" "Création de 'cyberchef'"
+
+log "[*]" "Création de 'vaultwarden'"
 cat << 'EOF' > /usr/local/bin/vaultwarden
 #!/bin/sh
 set -a
@@ -1401,8 +1423,9 @@ esac
 EOF
 chmod +x /usr/local/bin/vaultwarden
 ln -sf /usr/local/bin/vaultwarden /usr/local/bin/vw
-log "[+]" "Commande 'vaultwarden' (ou 'vw') créée avec succès."
-log "[*]" "Création de la commande globale 'immich'..."
+log "[+]" "Création de 'vaultwarden'"
+
+log "[*]" "Création de 'immich'"
 cat << 'EOF' > /usr/local/bin/immich
 #!/bin/sh
 set -a
@@ -1499,7 +1522,8 @@ esac
 EOF
 chmod +x /usr/local/bin/immich
 ln -sf /usr/local/bin/immich /usr/local/bin/im
-log "[+]" "Commande 'immich' (ou 'im') créée avec succès."
+log "[+]" "Création de 'immich'"
+
 #log "[*]" "Vérification de l'état des conteneurs Docker..."
 #SERVICES="lamp homeassistant jellyfin transmission seedbox grocy portainer filebrowser freshrss mqtt gitea siyuan myelectricaldata kiwix kolibri cyberchef vaultwarden immich"
 #for srv in $SERVICES; do
@@ -1519,12 +1543,12 @@ log "[+]" "Commande 'immich' (ou 'im') créée avec succès."
 #                log "[-]" "Échec lors de l'initialisation du service '$srv'."
 #            fi
 #        fi
-log "[*]" "Nettoyage des images Docker inutilisées..."
-if docker image prune -f >/dev/null 2>&1; then
-    log "[+]" "Images Docker inutilisées supprimées avec succès."
-else
-    log "[-]" "Échec lors du nettoyage des images Docker."
-fi
 #    fi
 #done
 #log "[+]" "Tous les services Docker ont été vérifiés et lancés."
+log "[*]" "Nettoyage des images Docker inutilisées"
+if docker image prune -f >/dev/null 2>&1; then
+    log "[+]" "Nettoyage des images Docker inutilisées"
+else
+    log "[-]" "Nettoyage des images Docker inutilisées"
+fi
