@@ -945,27 +945,29 @@ mkdir -p "$PATH_FRESHRSS"
 case "$1" in
     create)
         docker rm -f freshrss 2>/dev/null || true
-        docker pull freshrss/freshrss:latest || echo ""
-        docker run -d \
-            --name freshrss \
-            --restart=unless-stopped \
-            -e TZ=CET \
-            -e CRON_MIN="1,31" \
-            -p "$PORT_FRESHRSS:80" \
-            -v "$PATH_FRESHRSS:/var/www/FreshRSS" \
-            freshrss/freshrss:latest
+		docker pull freshrss/freshrss:latest || echo ""
+		docker run -d \
+    		--name freshrss \
+    		--restart=unless-stopped \
+    		-e TZ="Europe/Paris" \
+    		-e CRON_MIN="1,31" \
+    		-p "$PORT_FRESHRSS:80" \
+    		-v "$PATH_FRESHRSS/data:/var/www/FreshRSS/data" \
+    		-v "$PATH_FRESHRSS/extensions:/var/www/FreshRSS/extensions" \
+    		freshrss/freshrss:latest
         ;;
     update)
         docker rm -f freshrss 2>/dev/null || true
-        docker pull freshrss/freshrss:latest || echo ""
-        docker run -d \
-            --name freshrss \
-            --restart=unless-stopped \
-            -e TZ=CET \
-            -e CRON_MIN="1,31" \
-            -p "$PORT_FRESHRSS:80" \
-            -v "$PATH_FRESHRSS:/var/www/FreshRSS" \
-            freshrss/freshrss:latest
+		docker pull freshrss/freshrss:latest || echo ""
+		docker run -d \
+    		--name freshrss \
+    		--restart=unless-stopped \
+    		-e TZ="Europe/Paris" \
+    		-e CRON_MIN="1,31" \
+    		-p "$PORT_FRESHRSS:80" \
+    		-v "$PATH_FRESHRSS/data:/var/www/FreshRSS/data" \
+    		-v "$PATH_FRESHRSS/extensions:/var/www/FreshRSS/extensions" \
+    		freshrss/freshrss:latest
         ;;
     start)
         docker start freshrss
