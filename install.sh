@@ -233,8 +233,8 @@ cat << 'EOF' > /etc/samba/smb.conf
     force user = royjohan
 EOF
 chown -R royjohan:royjohan /media 2>/dev/null || true
-systemctl restart smbd nmbd >/dev/null
-systemctl enable smbd nmbd >/dev/null
+systemctl restart smbd nmbd > /dev/null 2>&1
+systemctl enable smbd nmbd > /dev/null 2>&1
 log "[+]" "Configuration de Samba"
 
 log "[*]" "Configuration de Cockpit"
@@ -261,8 +261,8 @@ login=$USERNAME_DYDNS
 password=$PASSWORD_DYDNS
 $DOMAIL_DYDNS
 EOF
-systemctl enable ddclient >/dev/null
-systemctl restart ddclient >/dev/null
+systemctl enable ddclient >/dev/null 2>&1
+systemctl restart ddclient >/dev/null 2>&1
 log "[+]" "Configuration de DDClient"
 
 log "[*]" "Configuration de Fail2ban"
@@ -278,8 +278,8 @@ port    = ssh
 logpath = %(sshd_log)s
 backend = %(sshd_backend)s
 EOF
-systemctl restart fail2ban >/dev/null
-systemctl enable fail2ban >/dev/null
+systemctl restart fail2ban >/dev/null 2>&1
+systemctl enable fail2ban >/dev/null 2>&1
 log "[+]" "Configuration de Fail2ban"
 
 log "[*]" "Configuration de Smartmontools"
@@ -287,8 +287,8 @@ sed -i 's/#start_due_daemon=yes/start_due_daemon=yes/' /etc/default/smartmontool
 cat << 'EOF' > /etc/smartd.conf
 DEVICESCAN -H -m root -M exec /usr/share/smartmontools/smartd-runner
 EOF
-systemctl enable smartmontools >/dev/null
-systemctl restart smartmontools >/dev/null
+systemctl enable smartmontools >/dev/null 2>&1
+systemctl restart smartmontools >/dev/null 2>&1
 log "[+]" "Configuration de Smartmontools"
 
 log "[*]" "Configuration des capteurs de température"
@@ -325,8 +325,6 @@ repair-timeout = 30
 EOF
 modprobe softdog 2>/dev/null || true
 echo "softdog" > /etc/modules-load.d/softdog.conf
-systemctl enable watchdog >/dev/null
-systemctl restart watchdog >/dev/null
 log "[+]" "Configuration de Watchdog"
 
 log "[*]" "Configuration de Glances"
@@ -344,8 +342,8 @@ RemainAfterExit=no
 WantedBy=multi-user.target
 EOF
 systemctl daemon-reload >/dev/null
-systemctl enable glancesacservice >/dev/null
-systemctl restart glancesacservice >/dev/null
+systemctl enable glancesacservice >/dev/null 2>&1
+systemctl restart glancesacservice >/dev/null 2>&1
 log "[+]" "Configuration de Glances"
 
 lsblk -rno NAME,MOUNTPOINT,LABEL,TYPE,UUID | while read -r name mountpoint label type uuid; do
