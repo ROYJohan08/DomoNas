@@ -19,9 +19,9 @@ log() {
     echo "$1 - $(date +'%Y-%m-%d %H:%M:%S') - $2" >> "${LOG_DIR}/$(date +'%Y%m%d')-INSTALL.log"
     if [ "$DEBUG" = "1" ]; then
 		case "$1" in
-			[+]) printf " \033[32m[PASS]\033[0m : $2 \n" ;;
-			[~]) printf " \033[33m[WAIT]\033[0m : $2 \n" ;;
-			[-]) printf " \033[31m[FAIL]\033[0m : $2 \n" ;;
+			"[+]") printf " \033[32m[PASS]\033[0m : $2 \n" ;;
+y
+"[-]") printf " \033[31m[FAIL]\033[0m : $2 \n" ;;
 		esac
     fi
 }
@@ -342,8 +342,8 @@ RemainAfterExit=no
 WantedBy=multi-user.target
 EOF
 systemctl daemon-reload >/dev/null
-systemctl enable glancesacservice >/dev/null 2>&1
-systemctl restart glancesacservice >/dev/null 2>&1
+systemctl enable glances.service >/dev/null 2>&1
+systemctl restart glances.service >/dev/null 2>&1
 log "[+]" "Configuration de Glances"
 
 lsblk -rno NAME,MOUNTPOINT,LABEL,TYPE,UUID | while read -r name mountpoint label type uuid; do
