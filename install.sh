@@ -721,7 +721,7 @@ case "$1" in
         cp -r "$TMP_DIR/twc/src/"* "$PATH_SEEDBOX/GUI/"
         rm -rf "$TMP_DIR"
         sleep 3 # Laisse le temps au conteneur de s'initialiser
-        docker exec seedbox cp -r /config/GUI /usr/share/transmission/public_html/web-control 2>/dev/null || true
+        docker exec seedbox cp -r -f /config/GUI/* /usr/share/transmission/public_html/ 2>/dev/null || true
         ;;
     update)
         docker rm -f seedbox 2>/dev/null || true
@@ -749,7 +749,7 @@ case "$1" in
         cp -r "$TMP_DIR/twc/src/"* "$PATH_SEEDBOX/GUI/"
         rm -rf "$TMP_DIR"
         sleep 3 # Laisse le temps au conteneur de s'initialiser
-        docker exec seedbox cp -r /config/GUI /usr/share/transmission/public_html/web-control 2>/dev/null || true
+        docker exec seedbox cp -r -f /config/GUI/* /usr/share/transmission/public_html/ 2>/dev/null || true
         ;;
     start)
         docker start seedbox
