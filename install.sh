@@ -20,7 +20,7 @@ log() {
     if [ "$DEBUG" = "1" ]; then
 		case "$1" in
 			"[+]") printf " \033[32m[PASS]\033[0m : $2 \n" ;;
-y
+			"[~]") printf " \033[32m[WAIT]\033[0m : $2 \n" ;;
 "[-]") printf " \033[31m[FAIL]\033[0m : $2 \n" ;;
 		esac
     fi
