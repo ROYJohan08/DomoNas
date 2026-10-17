@@ -1,1 +1,23 @@
+[
+    { "name": "HomeAssistant", "wan": "http://dsm.royjohan.fr:1000", "lan": "http://192.168.1.51:8123" },
+    { "name": "JellyFin", "wan": "http://dsm.royjohan.fr:1001", "lan": "http://192.168.1.51:1001" },
+    { "name": "DownBox", "wan": "http://dsm.royjohan.fr:1002", "lan": "http://192.168.1.51:1002" },
+    { "name": "SeedBox", "wan": "http://dsm.royjohan.fr:1003", "lan": "http://192.168.1.51:1003" },
+    { "name": "Grocy", "wan": "http://dsm.royjohan.fr:1004", "lan": "http://192.168.1.51:1004" },
+    { "name": "Portainer", "wan": "http://dsm.royjohan.fr:1005", "lan": "http://192.168.1.51:1005" },
+    { "name": "FileBrowser", "wan": "http://dsm.royjohan.fr:1006", "lan": "http://192.168.1.51:1006" },
+    { "name": "FreshRSS", "wan": "http://dsm.royjohan.fr:1007", "lan": "http://192.168.1.51:1007" },
+    { "name": "OctoPrint", "wan": "http://dsm.royjohan.fr:1008", "lan": "http://192.168.1.54:80" },
+    { "name": "SiYuhan", "wan": "http://dsm.royjohan.fr:1009", "lan": "http://192.168.1.51:1009" },
+    { "name": "Gitea", "wan": "http://dsm.royjohan.fr:1010", "lan": "http://192.168.1.51:1010" },
+    { "name": "Kiwix", "wan": "http://dsm.royjohan.fr:1011", "lan": "http://192.168.1.51:1011" },
+    { "name": "Kolibri", "wan": "http://dsm.royjohan.fr:1012", "lan": "http://192.168.1.51:1012" },
+    { "name": "CyberChef", "wan": "http://dsm.royjohan.fr:1014", "lan": "http://192.168.1.51:1014" },
+    { "name": "DownBoxManager", "wan": "http://dsm.royjohan.fr:81/downbox.php", "lan": "http://192.168.1.51:81/downbox.php" },
+    { "name": "SmartManager", "wan": "http://dsm.royjohan.fr:81/smart.php", "lan": "http://192.168.1.51:81/smart.php" },
+    { "name": "PmtilesManager", "wan": "http://dsm.royjohan.fr:81/pmtiles.php", "lan": "http://192.168.1.51:81/pmtiles.php" },
+    { "name": "ZimManager", "wan": "http://dsm.royjohan.fr:81/zim.php", "lan": "http://192.168.1.51:81/zim.php" },
+    { "name": "Protocoles", "wan": "http://api.royjohan.fr/protocoles/", "lan": "http://api.royjohan.fr/protocoles/" },
+    { "name": "Checker", "wan": "http://api.royjohan.fr/AZUpCheck.php", "lan": "http://api.royjohan.fr/AZUpCheck.php" }
+]
 
