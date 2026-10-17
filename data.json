@@ -20,6 +20,7 @@
     { "name": "PmtilesManager", "wan": "http://dsm.royjohan.fr:81/pmtiles.php", "lan": "http://192.168.1.51:81/pmtiles.php" },
     { "name": "ZimManager", "wan": "http://dsm.royjohan.fr:81/zim.php", "lan": "http://192.168.1.51:81/zim.php" },
     { "name": "Protocoles", "wan": "http://api.royjohan.fr/protocoles/", "lan": "http://api.royjohan.fr/protocoles/" },
-    { "name": "Checker", "wan": "http://api.royjohan.fr/AZUpCheck.php", "lan": "http://api.royjohan.fr/AZUpCheck.php" }
+    { "name": "Checker", "wan": "http://api.royjohan.fr/AZUpCheck.php", "lan": "http://api.royjohan.fr/AZUpCheck.php" },
+    { "name": "Mqtt", "wan": "http://dsm.royjohan.fr:81/mqtt.php", "lan": "http://192.168.1.51:81/mqtt.php.php" }
   ]
 }
