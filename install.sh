@@ -1138,10 +1138,10 @@ case "$1" in
             -p "$PORT_SIYUAN:6806" \
             -e PUID=1000 \
             -e PGID=1000 \
+			-e SIYUAN_ACCESS_AUTH_CODE_BYPASS=true \
             b3log/siyuan:latest \
             serve \
-            --workspace=/siyuan/workspace \
-            --accessAuthCode="$PASSWORD_GENERAL_HIGH"
+            --workspace=/siyuan/workspace
         ;;
     start)
         docker start siyuan
