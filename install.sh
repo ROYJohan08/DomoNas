@@ -418,18 +418,25 @@ case "$1" in
             php:8.2-apache
         ;;
     update)
-        docker rm -f lamp 2>/dev/null || true
-        docker pull php:8.2-apache || echo ""
-        docker run -d \
-            --name lamp \
-            --restart=unless-stopped \
-            -e TZ=CET \
-            -v "$PATH_LAMP:/var/www/html" \
-            -v /media/Docs01/Maps/20260726_Europa.pmtiles:/var/www/html/europe.pmtiles:ro \
-            -v /media:/media \
-            -p "$PORT_LAMP:80" \
-            -p 3306:3306 \
-            php:8.2-apache
+        OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' lamp 2>/dev/null || echo "")
+        docker pull php:8.2-apache || echo true
+        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' php:8.2-apache)
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
+            echo "l'image est déjà à jour. Aucune action requise."
+        else
+            docker rm -f lamp 2>/dev/null || true
+        	docker rm -f lamp 2>/dev/null || true
+        	docker run -d \
+	            --name lamp \
+            	--restart=unless-stopped \
+            	-e TZ=CET \
+            	-v "$PATH_LAMP:/var/www/html" \
+            	-v /media/Docs01/Maps/20260726_Europa.pmtiles:/var/www/html/europe.pmtiles:ro \
+            	-v /media:/media \
+            	-p "$PORT_LAMP:80" \
+            	-p 3306:3306 \
+            	php:8.2-apache
+			fi
         ;;
     start)
         docker start lamp
@@ -475,19 +482,25 @@ case "$1" in
             homeassistant/home-assistant:latest
         ;;
     update)
-        docker rm -f homeassistant 2>/dev/null || true
+		OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' homeassistant 2>/dev/null || echo "")
         docker pull homeassistant/home-assistant:latest || echo ""
-        docker run -d \
-            --name homeassistant \
-            --privileged \
-            --restart=unless-stopped \
-            --network=host \
-            -e TZ=CET \
-            -v "$PATH_HOMEASSISTANT:/config" \
-            --device /dev/dri:/dev/dri \
-            -v /etc/localtime:/etc/localtime:ro \
-            -p "$PORT_HOMEASSISTANT:8123" \
-            homeassistant/home-assistant:latest
+        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' homeassistant/home-assistant:latest)
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
+            echo "L'image est déjà à jour. Aucune action requise."
+        else
+        	docker rm -f homeassistant 2>/dev/null || true
+        	docker run -d \
+	            --name homeassistant \
+            	--privileged \
+            	--restart=unless-stopped \
+            	--network=host \
+            	-e TZ=CET \
+            	-v "$PATH_HOMEASSISTANT:/config" \
+	            --device /dev/dri:/dev/dri \
+            	-v /etc/localtime:/etc/localtime:ro \
+            	-p "$PORT_HOMEASSISTANT:8123" \
+            	homeassistant/home-assistant:latest
+			fi
         ;;
     start)
         docker start homeassistant
@@ -533,22 +546,28 @@ case "$1" in
             --device /dev/dri/renderD128:/dev/dri/renderD128 \
             jellyfin/jellyfin:latest
         ;;
-        update)
-        docker rm -f jellyfin 2>/dev/null || true
+    update)
+		OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' jellyfin 2>/dev/null || echo "")
         docker pull jellyfin/jellyfin:latest || echo " "
-        docker run -d \
-            --name jellyfin \
-            --restart=unless-stopped \
-            -e TZ=CET \
-            -v "$PATH_JELLYFIN/config:/config" \
-            -v "/media/:/media" \
-            -v "$PATH_JELLYFIN/cache:/cache" \
-            -p "$PORT_JELLYFIN:8096" \
-            -p 8920:8920 \
-            -e PUID=1000 \
-            -e PGID=1000 \
-            --device /dev/dri/renderD128:/dev/dri/renderD128 \
-            jellyfin/jellyfin:latest
+        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' jellyfin/jellyfin:latest)
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
+            echo "L'image est déjà à jour. Aucune action requise."
+        else
+        	docker rm -f jellyfin 2>/dev/null || true
+        	docker run -d \
+	            --name jellyfin \
+            	--restart=unless-stopped \
+            	-e TZ=CET \
+            	-v "$PATH_JELLYFIN/config:/config" \
+            	-v "/media/:/media" \
+            	-v "$PATH_JELLYFIN/cache:/cache" \
+            	-p "$PORT_JELLYFIN:8096" \
+            	-p 8920:8920 \
+            	-e PUID=1000 \
+            	-e PGID=1000 \
+            	--device /dev/dri/renderD128:/dev/dri/renderD128 \
+            	jellyfin/jellyfin:latest
+			fi			
         ;;
     start)
         docker start jellyfin
@@ -624,45 +643,58 @@ case "$1" in
             haugene/transmission-openvpn-proxy:latest
         ;;
     update)
-        docker rm -f transmission downboxproxy 2>/dev/null || true
+		OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' transmission 2>/dev/null || echo "")
         docker pull haugene/transmission-openvpn:latest || true
+        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' haugene/transmission-openvpn:latest)
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
+            echo "L'image est déjà à jour. Aucune action requise."
+        else
+			docker rm -f transmission 2>/dev/null || true
+			docker run -d \
+	            --name transmission \
+            	--privileged \
+            	--restart=unless-stopped \
+            	-e PUID=1000 \
+            	-e PGID=1000 \
+            	-p 9091:9091 \
+            	-p 51415:51414 \
+            	-p 51415:51414/udp \
+            	--cap-add=NET_ADMIN \
+            	-e TRANSMISSION_WEB_UI=transmission-web-control \
+            	-v "$PATH_DOWNBOX/custom:/etc/openvpn/custom" \
+            	-v "$PATH_TRANSMISSION:/data" \
+            	-v "$PATH_DOWNBOX/config:/config" \
+            	-e OPENVPN_PROVIDER=CUSTOM \
+            	-e OPENVPN_USERNAME="$USERNAME_VPN" \
+            	-e OPENVPN_PASSWORD="$PASSWORD_VPN" \
+            	-e TRANSMISSION_DOWNLOAD_DIR=/data/DownBox \
+            	-e UFW_ALLOW_GW_NET=true \
+            	-e UFW_EXTRA_PORTS=9910,23561,443,83,9091 \
+            	-e DROP_DEFAULT_ROUTE=true \
+            	-e TRANSMISSION_RPC_USERNAME="$USERNAME_GENERAL" \
+            	-e TRANSMISSION_RPC_PASSWORD="$PASSWORD_GENERAL_LOW" \
+            	-e TRANSMISSION_RPC_AUTHENTICATION_REQUIRED=true \
+            	-e TRANSMISSION_RPC_WHITELIST_ENABLED=false \
+            	-e LOCAL_NETWORK=192.168.1.0/32 \
+            	--log-driver json-file \
+            	--log-opt max-size=10m \
+            	haugene/transmission-openvpn:latest
+		fi
+		OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' downboxproxy 2>/dev/null || echo "")
         docker pull haugene/transmission-openvpn-proxy:latest || true
-        docker run -d \
-            --name transmission \
-            --privileged \
-            --restart=unless-stopped \
-            -e PUID=1000 \
-            -e PGID=1000 \
-            -p 9091:9091 \
-            -p 51415:51414 \
-            -p 51415:51414/udp \
-            --cap-add=NET_ADMIN \
-            -e TRANSMISSION_WEB_UI=transmission-web-control \
-            -v "$PATH_DOWNBOX/custom:/etc/openvpn/custom" \
-            -v "$PATH_TRANSMISSION:/data" \
-            -v "$PATH_DOWNBOX/config:/config" \
-            -e OPENVPN_PROVIDER=CUSTOM \
-            -e OPENVPN_USERNAME="$USERNAME_VPN" \
-            -e OPENVPN_PASSWORD="$PASSWORD_VPN" \
-            -e TRANSMISSION_DOWNLOAD_DIR=/data/DownBox \
-            -e UFW_ALLOW_GW_NET=true \
-            -e UFW_EXTRA_PORTS=9910,23561,443,83,9091 \
-            -e DROP_DEFAULT_ROUTE=true \
-            -e TRANSMISSION_RPC_USERNAME="$USERNAME_GENERAL" \
-            -e TRANSMISSION_RPC_PASSWORD="$PASSWORD_GENERAL_LOW" \
-            -e TRANSMISSION_RPC_AUTHENTICATION_REQUIRED=true \
-            -e TRANSMISSION_RPC_WHITELIST_ENABLED=false \
-            -e LOCAL_NETWORK=192.168.1.0/32 \
-            --log-driver json-file \
-            --log-opt max-size=10m \
-            haugene/transmission-openvpn:latest
-        docker run -d \
-            --name downboxproxy \
-            --privileged \
-            --restart=unless-stopped \
-            --link transmission \
-            -p "$PORT_DOWNBOX:8080" \
-            haugene/transmission-openvpn-proxy:latest
+        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' haugene/transmission-openvpn-proxy:latest)
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
+            echo "L'image est déjà à jour. Aucune action requise."
+        else
+        	docker rm -f transmission downboxproxy 2>/dev/null || true
+        	docker run -d \
+	            --name downboxproxy \
+            	--privileged \
+            	--restart=unless-stopped \
+            	--link transmission \
+            	-p "$PORT_DOWNBOX:8080" \
+            	haugene/transmission-openvpn-proxy:latest
+		fi
         ;;
     start)
         docker start transmission downboxproxy
@@ -724,32 +756,38 @@ case "$1" in
         docker exec seedbox cp -r -f /config/GUI/* /usr/share/transmission/public_html/ 2>/dev/null || true
         ;;
     update)
-        docker rm -f seedbox 2>/dev/null || true
+		OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' seedbox 2>/dev/null || echo "")
         docker pull lscr.io/linuxserver/transmission:latest || echo ""
-        docker run -d \
-            --name seedbox \
-            --privileged \
-            --restart=unless-stopped \
-            -e TZ=CET \
-            -v "$PATH_SEEDBOX:/config" \
-            -v "$PATH_TRANSMISSION:/downloads" \
-            -p "$PORT_SEEDBOX:9091" \
-            -p 51413:51413 \
-            -p 51413:51413/udp \
-            -e PUID=1000 \
-            -e PGID=1000 \
-            -e USER="$USERNAME_GENERAL" \
-            -e PASS="$PASSWORD_GENERAL_LOW" \
-            -e TRANSMISSION_DOWNLOAD_DIR=/downloads/SeedBox \
-            lscr.io/linuxserver/transmission:latest
-        TMP_DIR="/tmp/twc_$(date +%s)"
-        mkdir -p "$TMP_DIR"
-        git clone https://github.com/ronggang/transmission-web-control.git "$TMP_DIR/twc" >/dev/null 2>&1
-        mkdir -p "$PATH_SEEDBOX/GUI"
-        cp -r "$TMP_DIR/twc/src/"* "$PATH_SEEDBOX/GUI/"
-        rm -rf "$TMP_DIR"
-        sleep 3 # Laisse le temps au conteneur de s'initialiser
-        docker exec seedbox cp -r -f /config/GUI/* /usr/share/transmission/public_html/ 2>/dev/null || true
+        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' lscr.io/linuxserver/transmission:latest)
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
+            echo "L'image est déjà à jour. Aucune action requise."
+        else
+        	docker rm -f seedbox 2>/dev/null || true
+        	docker run -d \
+	            --name seedbox \
+            	--privileged \
+            	--restart=unless-stopped \
+            	-e TZ=CET \
+            	-v "$PATH_SEEDBOX:/config" \
+            	-v "$PATH_TRANSMISSION:/downloads" \
+            	-p "$PORT_SEEDBOX:9091" \
+            	-p 51413:51413 \
+            	-p 51413:51413/udp \
+            	-e PUID=1000 \
+            	-e PGID=1000 \
+            	-e USER="$USERNAME_GENERAL" \
+            	-e PASS="$PASSWORD_GENERAL_LOW" \
+            	-e TRANSMISSION_DOWNLOAD_DIR=/downloads/SeedBox \
+            	lscr.io/linuxserver/transmission:latest
+        	TMP_DIR="/tmp/twc_$(date +%s)"
+        	mkdir -p "$TMP_DIR"
+        	git clone https://github.com/ronggang/transmission-web-control.git "$TMP_DIR/twc" >/dev/null 2>&1
+        	mkdir -p "$PATH_SEEDBOX/GUI"
+        	cp -r "$TMP_DIR/twc/src/"* "$PATH_SEEDBOX/GUI/"
+        	rm -rf "$TMP_DIR"
+        	sleep 3 # Laisse le temps au conteneur de s'initialiser
+        	docker exec seedbox cp -r -f /config/GUI/* /usr/share/transmission/public_html/ 2>/dev/null || true
+		fi
         ;;
     start)
         docker start seedbox
@@ -792,15 +830,21 @@ case "$1" in
             lscr.io/linuxserver/grocy:latest
         ;;
     update)
-        docker rm -f grocy 2>/dev/null || true
+		OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' grocy 2>/dev/null || echo "")
         docker pull lscr.io/linuxserver/grocy:latest || echo ""
-        docker run -d \
-            --name grocy \
-            --restart=unless-stopped \
-            -e TZ=CET \
-            -v "$PATH_GROCY:/config" \
-            -p "$PORT_GROCY:80" \
-            lscr.io/linuxserver/grocy:latest
+        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' lscr.io/linuxserver/grocy:latest)
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
+            echo "L'image est déjà à jour. Aucune action requise."
+        else
+        	docker rm -f grocy 2>/dev/null || true
+        	docker run -d \
+	            --name grocy \
+            	--restart=unless-stopped \
+            	-e TZ=CET \
+            	-v "$PATH_GROCY:/config" \
+            	-p "$PORT_GROCY:80" \
+            	lscr.io/linuxserver/grocy:latest
+		fi
         ;;
     start)
         docker start grocy
@@ -845,19 +889,25 @@ case "$1" in
             portainer/portainer-ce:latest
         ;;
     update)
-        docker rm -f portainer 2>/dev/null || true
+		OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' portainer 2>/dev/null || echo "")
         docker pull portainer/portainer-ce:latest || echo ""
-        docker run -d \
-            --name portainer \
-            --privileged \
-            --restart=unless-stopped \
-            -e TZ=CET \
-            -p 8000:8000 \
-            -p 9443:9443 \
-            -p "$PORT_PORTAINER:9000" \
-            -v /var/run/docker.sock:/var/run/docker.sock \
-            -v "$PATH_PORTAINER:/data" \
-            portainer/portainer-ce:latest
+        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' portainer/portainer-ce:latest)
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
+            echo "L'image est déjà à jour. Aucune action requise."
+        else
+        	docker rm -f portainer 2>/dev/null || true
+        	docker run -d \
+	            --name portainer \
+            	--privileged \
+            	--restart=unless-stopped \
+            	-e TZ=CET \
+            	-p 8000:8000 \
+            	-p 9443:9443 \
+            	-p "$PORT_PORTAINER:9000" \
+            	-v /var/run/docker.sock:/var/run/docker.sock \
+            	-v "$PATH_PORTAINER:/data" \
+            	portainer/portainer-ce:latest
+		fi
         ;;
     start)
         docker start portainer
@@ -902,17 +952,23 @@ case "$1" in
             gtstef/filebrowser:latest
         ;;
     update)
-        docker rm -f filebrowser 2>/dev/null || true
+		OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' filebrowser 2>/dev/null || echo "")
         docker pull gtstef/filebrowser:latest || echo " "
-        docker run -d \
-            --name filebrowser \
-            --restart=unless-stopped \
-            -e TZ=CET \
-            -v "/media:/srv" \
-            -v "$PATH_FILEBROWSER/database:/database" \
-            -v "$PATH_FILEBROWSER/config:/config" \
-            -p "$PORT_FILEBROWSER:80" \
-            gtstef/filebrowser:latest
+        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' gtstef/filebrowser:latest)
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
+            echo "L'image est déjà à jour. Aucune action requise."
+        else
+        	docker rm -f filebrowser 2>/dev/null || true
+        	docker run -d \
+	            --name filebrowser \
+            	--restart=unless-stopped \
+            	-e TZ=CET \
+            	-v "/media:/srv" \
+            	-v "$PATH_FILEBROWSER/database:/database" \
+            	-v "$PATH_FILEBROWSER/config:/config" \
+            	-p "$PORT_FILEBROWSER:80" \
+            	gtstef/filebrowser:latest
+			fi
         ;;
     start)
         docker start filebrowser
@@ -957,17 +1013,23 @@ case "$1" in
     		freshrss/freshrss:latest
         ;;
     update)
-        docker rm -f freshrss 2>/dev/null || true
-		docker pull freshrss/freshrss:latest || echo ""
-		docker run -d \
-    		--name freshrss \
-    		--restart=unless-stopped \
-    		-e TZ="Europe/Paris" \
-    		-e CRON_MIN="1,31" \
-    		-p "$PORT_FRESHRSS:80" \
-    		-v "$PATH_FRESHRSS/data:/var/www/FreshRSS/data" \
-    		-v "$PATH_FRESHRSS/extensions:/var/www/FreshRSS/extensions" \
-    		freshrss/freshrss:latest
+		OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' freshrss 2>/dev/null || echo "")
+        docker pull freshrss/freshrss:latest || echo ""
+        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' freshrss/freshrss:latest)
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
+            echo "L'image est déjà à jour. Aucune action requise."
+        else
+        	docker rm -f freshrss 2>/dev/null || true
+			docker run -d \
+	    		--name freshrss \
+    			--restart=unless-stopped \
+    			-e TZ="Europe/Paris" \
+    			-e CRON_MIN="1,31" \
+    			-p "$PORT_FRESHRSS:80" \
+    			-v "$PATH_FRESHRSS/data:/var/www/FreshRSS/data" \
+    			-v "$PATH_FRESHRSS/extensions:/var/www/FreshRSS/extensions" \
+    			freshrss/freshrss:latest
+		fi
         ;;
     start)
         docker start freshrss
@@ -1016,19 +1078,25 @@ case "$1" in
         docker exec mqtt sh -c "mosquitto_passwd -b /mosquitto/config/password.txt $USERNAME_GENERAL $PASSWORD_GENERAL_HIGH" 2>/dev/null || true
         ;;
      update)
-        docker rm -f mqtt mstt 2>/dev/null || true
+	 	OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' mqtt 2>/dev/null || echo "")
         docker pull eclipse-mosquitto:latest || echo ""
-        docker run -d \
-            --name mqtt \
-            --restart=unless-stopped \
-            -e TZ=CET \
-            -v "$PATH_MQTT/config:/mosquitto/config" \
-            -v "$PATH_MQTT/data:/mosquitto/data" \
-            -p "$PORT_MQTT:1883" \
-            -p 9001:9001 \
-            eclipse-mosquitto:latest
-        sleep 2
-        docker exec mqtt sh -c "mosquitto_passwd -b /mosquitto/config/password.txt $USERNAME_GENERAL $PASSWORD_GENERAL_HIGH" 2>/dev/null || true
+        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' eclipse-mosquitto:latest)
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
+            echo "L'image est déjà à jour. Aucune action requise."
+        else
+        	docker rm -f mqtt mstt 2>/dev/null || true
+        	docker run -d \
+	            --name mqtt \
+            	--restart=unless-stopped \
+            	-e TZ=CET \
+            	-v "$PATH_MQTT/config:/mosquitto/config" \
+            	-v "$PATH_MQTT/data:/mosquitto/data" \
+	            -p "$PORT_MQTT:1883" \
+            	-p 9001:9001 \
+            	eclipse-mosquitto:latest
+        	sleep 2
+        	docker exec mqtt sh -c "mosquitto_passwd -b /mosquitto/config/password.txt $USERNAME_GENERAL $PASSWORD_GENERAL_HIGH" 2>/dev/null || true
+		fi
         ;;
     start)
         docker start mqtt
@@ -1073,17 +1141,23 @@ case "$1" in
             gitea/gitea:latest
         ;;
     update)
-        docker rm -f gitea 2>/dev/null || true
+		OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' gitea 2>/dev/null || echo "")
         docker pull gitea/gitea:latest || echo ""
-        docker run -d \
-            --name gitea \
-            --restart=unless-stopped \
-            -p "$PORT_GITEA:3000" \
-            -p 2222:22 \
-            -v "$PATH_GITEA:/data" \
-            -v /etc/timezone:/etc/timezone:ro \
-            -v /etc/localtime:/etc/localtime:ro \
-            gitea/gitea:latest
+        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' gitea/gitea:latest)
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
+            echo "L'image est déjà à jour. Aucune action requise."
+        else
+        	docker rm -f gitea 2>/dev/null || true
+        	docker run -d \
+	            --name gitea \
+            	--restart=unless-stopped \
+            	-p "$PORT_GITEA:3000" \
+            	-p 2222:22 \
+            	-v "$PATH_GITEA:/data" \
+            	-v /etc/timezone:/etc/timezone:ro \
+            	-v /etc/localtime:/etc/localtime:ro \
+            	gitea/gitea:latest
+		fi
         ;;
     start)
         docker start gitea
@@ -1131,19 +1205,25 @@ case "$1" in
             --accessAuthCode="$PASSWORD_GENERAL_HIGH"
         ;;
     update)
-        docker rm -f siyuan 2>/dev/null || true
+		OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' siyuan 2>/dev/null || echo "")
         docker pull b3log/siyuan:latest || echo ""
-        docker run -d \
-            --name siyuan \
-            --restart=unless-stopped \
-            -v "$PATH_SIYUAN:/siyuan/workspace" \
-            -p "$PORT_SIYUAN:6806" \
-            -e PUID=1000 \
-            -e PGID=1000 \
-			-e SIYUAN_ACCESS_AUTH_CODE_BYPASS=true \
-            b3log/siyuan:latest \
-            serve \
-            --workspace=/siyuan/workspace
+        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' b3log/siyuan:latest)
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
+            echo "L'image est déjà à jour. Aucune action requise."
+        else
+        	docker rm -f siyuan 2>/dev/null || true
+        	docker run -d \
+	            --name siyuan \
+            	--restart=unless-stopped \
+            	-v "$PATH_SIYUAN:/siyuan/workspace" \
+            	-p "$PORT_SIYUAN:6806" \
+            	-e PUID=1000 \
+            	-e PGID=1000 \
+				-e SIYUAN_ACCESS_AUTH_CODE_BYPASS=true \
+            	b3log/siyuan:latest \
+            	serve \
+            	--workspace=/siyuan/workspace
+		fi
         ;;
     start)
         docker start siyuan
@@ -1185,14 +1265,20 @@ case "$1" in
             m4dm4rtig4n/myelectricaldata:latest
         ;;
     update)
-        docker rm -f med myelectricaldata 2>/dev/null || true
+		OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' myelectricaldata 2>/dev/null || echo "")
         docker pull m4dm4rtig4n/myelectricaldata:latest || echo ""
-        docker run -d \
-            --name myelectricaldata \
-            --restart=unless-stopped \
-            -p "$PORT_MED:5000" \
-            -v "$PATH_MED:/data/config.yaml" \
-            m4dm4rtig4n/myelectricaldata:latest
+        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' m4dm4rtig4n/myelectricaldata:latest)
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
+            echo "L'image est déjà à jour. Aucune action requise."
+        else
+        	docker rm -f med myelectricaldata 2>/dev/null || true
+        	docker run -d \
+	            --name myelectricaldata \
+            	--restart=unless-stopped \
+            	-p "$PORT_MED:5000" \
+            	-v "$PATH_MED:/data/config.yaml" \
+            	m4dm4rtig4n/myelectricaldata:latest
+		fi
         ;;
     start)
         docker start myelectricaldata
@@ -1235,15 +1321,21 @@ case "$1" in
             /data/*.zim
         ;;
     update)
-        docker rm -f kiwix 2>/dev/null || true
+		OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' kiwix 2>/dev/null || echo "")
         docker pull ghcr.io/kiwix/kiwix-serve:latest || echo ""
-        docker run -d \
-            --name kiwix \
-            --restart=unless-stopped \
-            -p "$PORT_KIWIX:8080" \
-            -v "$PATH_KIWIX:/data" \
-            ghcr.io/kiwix/kiwix-serve:latest \
-            /data/*.zim
+        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' ghcr.io/kiwix/kiwix-serve:latest)
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
+            echo "L'image est déjà à jour. Aucune action requise."
+        else
+        	docker rm -f kiwix 2>/dev/null || true
+        	docker run -d \
+	            --name kiwix \
+            	--restart=unless-stopped \
+            	-p "$PORT_KIWIX:8080" \
+            	-v "$PATH_KIWIX:/data" \
+            	ghcr.io/kiwix/kiwix-serve:latest \
+            	/data/*.zim
+		fi
         ;;
     start)
         docker start kiwix
@@ -1285,14 +1377,20 @@ case "$1" in
             learningequality/kolibri:latest
         ;;
     update)
-        docker rm -f kolibri 2>/dev/null || true
+		OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' kolibri 2>/dev/null || echo "")
         docker pull learningequality/kolibri:latest || echo ""
-        docker run -d \
-            --name kolibri \
-            --restart=unless-stopped \
-            -p "$PORT_KOLIBRI:8080" \
-            -v "$PATH_KOLIBRI:/kolibri" \
-            learningequality/kolibri:latest
+        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' learningequality/kolibri:latest)
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
+            echo "L'image est déjà à jour. Aucune action requise."
+        else
+        	docker rm -f kolibri 2>/dev/null || true
+        	docker run -d \
+	            --name kolibri \
+            	--restart=unless-stopped \
+            	-p "$PORT_KOLIBRI:8080" \
+            	-v "$PATH_KOLIBRI:/kolibri" \
+            	learningequality/kolibri:latest
+		fi
         ;;
     start)
         docker start kolibri
@@ -1331,13 +1429,19 @@ case "$1" in
             mpepping/cyberchef:latest
         ;;
     update)
-        docker rm -f cyberchef 2>/dev/null || true
+		OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' cyberchef 2>/dev/null || echo "")
         docker pull mpepping/cyberchef:latest || echo ""
-        docker run -d \
-            --name cyberchef \
-            --restart=unless-stopped \
-            -p "$PORT_CYBERCHEF:8000" \
-            mpepping/cyberchef:latest
+        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' mpepping/cyberchef:latest)
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
+            echo "L'image est déjà à jour. Aucune action requise."
+        else
+        	docker rm -f cyberchef 2>/dev/null || true
+        	docker run -d \
+	            --name cyberchef \
+            	--restart=unless-stopped \
+            	-p "$PORT_CYBERCHEF:8000" \
+            	mpepping/cyberchef:latest
+		fi
         ;;
     start)
         docker start cyberchef
@@ -1388,23 +1492,29 @@ case "$1" in
             vaultwarden/server:latest
         ;;
     update)
-        if [ ! -f "$PATH_VAULTWARDEN/ssl/vaultwarden.crt" ] || [ ! -f "$PATH_VAULTWARDEN/ssl/vaultwarden.key" ]; then
-            openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
-                -keyout "$PATH_VAULTWARDEN/ssl/vaultwarden.key" \
-                -out "$PATH_VAULTWARDEN/ssl/vaultwarden.crt" \
-                -subj "/CN=domonas.local/O=DomoNas/C=FR" 2>/dev/null
-        fi
-        docker rm -f vaultwarden 2>/dev/null || true
+		OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' vaultwarden 2>/dev/null || echo "")
         docker pull vaultwarden/server:latest || echo ""
-        docker run -d \
-            --name vaultwarden \
-            -e WEBSOCKET_ENABLED=true \
-            -e ROCKET_TLS='{certs="/data/ssl/vaultwarden.crt",key="/data/ssl/vaultwarden.key"}' \
-            -v "$PATH_VAULTWARDEN:/data" \
-            -p "$PORT_VAULTWARDEN:80" \
-            -p 3012:3012 \
-            --restart unless-stopped \
-            vaultwarden/server:latest
+        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' vaultwarden/server:latest)
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
+            echo "L'image est déjà à jour. Aucune action requise."
+        else
+        	if [ ! -f "$PATH_VAULTWARDEN/ssl/vaultwarden.crt" ] || [ ! -f "$PATH_VAULTWARDEN/ssl/vaultwarden.key" ]; then
+	            openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+                	-keyout "$PATH_VAULTWARDEN/ssl/vaultwarden.key" \
+                	-out "$PATH_VAULTWARDEN/ssl/vaultwarden.crt" \
+                	-subj "/CN=domonas.local/O=DomoNas/C=FR" 2>/dev/null
+        	fi
+        	docker rm -f vaultwarden 2>/dev/null || true
+        	docker run -d \
+	            --name vaultwarden \
+            	-e WEBSOCKET_ENABLED=true \
+            	-e ROCKET_TLS='{certs="/data/ssl/vaultwarden.crt",key="/data/ssl/vaultwarden.key"}' \
+            	-v "$PATH_VAULTWARDEN:/data" \
+            	-p "$PORT_VAULTWARDEN:80" \
+            	-p 3012:3012 \
+            	--restart unless-stopped \
+            	vaultwarden/server:latest
+		fi
         ;;
     start)
         docker start vaultwarden
@@ -1524,28 +1634,28 @@ chmod +x /usr/local/bin/immich
 ln -sf /usr/local/bin/immich /usr/local/bin/im
 log "[+]" "Création de 'immich'"
 
-#log "[*]" "Vérification de l'état des conteneurs Docker..."
-#SERVICES="lamp homeassistant jellyfin transmission seedbox grocy portainer filebrowser freshrss mqtt gitea siyuan myelectricaldata kiwix kolibri cyberchef vaultwarden immich"
-#for srv in $SERVICES; do
-#    if [ -x "/usr/local/bin/$srv" ]; then
-#        container_name="$srv"
-#        [ "$srv" = "transmission" ] && container_name="transmission"
-#        [ "$srv" = "myelectricaldata" ] && container_name="myelectricaldata"
-#        [ "$srv" = "mqtt" ] && container_name="mqtt"
-#        [ "$srv" = "immich" ] && container_name="immich"
-#        if docker ps --format '{{.Names}}' | grep -q "^${container_name}$"; then
-#            log "[*]" "Le conteneur '$container_name' est déjà actif."
-#        else
-#            log "[!]" "Le conteneur '$container_name' est arrêté ou absent. Lancement via '$srv create'..."
-#            if "/usr/local/bin/$srv" create; then
-#                log "[+]" "Service '$srv' initialisé et lancé avec succès."
-#            else
-#                log "[-]" "Échec lors de l'initialisation du service '$srv'."
-#            fi
-#        fi
-#    fi
-#done
-#log "[+]" "Tous les services Docker ont été vérifiés et lancés."
+log "[*]" "Vérification de l'état des conteneurs Docker..."
+SERVICES="lamp homeassistant jellyfin downbox seedbox grocy portainer filebrowser freshrss mqtt gitea siyuan myelectricaldata kiwix kolibri cyberchef vaultwarden immich"
+for srv in $SERVICES; do
+    if [ -x "/usr/local/bin/$srv" ]; then
+        container_name="$srv"
+        [ "$srv" = "downbox" ] && container_name="downbox"
+        [ "$srv" = "myelectricaldata" ] && container_name="myelectricaldata"
+        [ "$srv" = "mqtt" ] && container_name="mqtt"
+        [ "$srv" = "immich" ] && container_name="immich"
+        if docker ps --format '{{.Names}}' | grep -q "^${container_name}$"; then
+            log "[*]" "Le conteneur '$container_name' est déjà actif."
+        else
+            log "[!]" "Le conteneur '$container_name' est arrêté ou absent. Lancement via '$srv create'..."
+            if "/usr/local/bin/$srv" update; then
+                log "[+]" "Service '$srv' initialisé et lancé avec succès."
+            else
+                log "[-]" "Échec lors de l'initialisation du service '$srv'."
+            fi
+        fi
+    fi
+done
+log "[+]" "Tous les services Docker ont été vérifiés et lancés."
 log "[*]" "Nettoyage des images Docker inutilisées"
 if docker image prune -f >/dev/null 2>&1; then
     log "[+]" "Nettoyage des images Docker inutilisées"
