@@ -20,11 +20,15 @@ log() {
     if [ "$DEBUG" = "1" ]; then
 		case "$1" in
 			"[+]") printf " \033[32m[PASS]\033[0m : $2 \n" ;;
-			"[~]") printf " \033[32m[WAIT]\033[0m : $2 \n" ;;
-"[-]") printf " \033[31m[FAIL]\033[0m : $2 \n" ;;
+			"[~]") printf " \033[38;5;208m[WAIT]\033[0m : $2 \n" ;;
+			"[-]") printf " \033[31m[FAIL]\033[0m : $2 \n" ;;
 		esac
     fi
 }
+
+# ┌────────────────────────────────────────────────────────────────────────────┐
+# │ SECTION : Installation de services                                         │
+# └────────────────────────────────────────────────────────────────────────────┘
 
 log "[*]" "Mise a jours du systeme"
 apt-get update -y > /dev/null
@@ -86,6 +90,9 @@ for pkg in $PACKAGES; do
     fi
 done
 
+# ┌────────────────────────────────────────────────────────────────────────────┐
+# │ SECTION : credentials                                                      │
+# └────────────────────────────────────────────────────────────────────────────┘
 
 mkdir -p "$CRE_DIR"
 TARGET_CRED="$CRE_DIR/credentials.env"
@@ -144,6 +151,10 @@ set -a
 . "$TARGET_CRED"
 set +a
 log "[+]" "import de 'credentials.env'"
+
+# ┌────────────────────────────────────────────────────────────────────────────┐
+# │ SECTION : Configurations                                                   │
+# └────────────────────────────────────────────────────────────────────────────┘
 
 log "[*]" "Configuration de Samba"
 [ ! -f /etc/samba/smb.conf.bak ] && cp /etc/samba/smb.conf /etc/samba/smb.conf.bak
@@ -392,6 +403,10 @@ add_cron_job "@reboot mount -a --onlyonce"
 add_cron_job "50 6 * * * $SOF_DIR/archive.sh &"
 crontab "$CRON_TMP"
 rm -f "$CRON_TMP"
+
+# ┌────────────────────────────────────────────────────────────────────────────┐
+# │ SECTION : Commandes docker                                                 │
+# └────────────────────────────────────────────────────────────────────────────┘
 
 log "[*]" "Création de 'lamp'"
 cat << 'EOF' > /usr/local/bin/lamp
