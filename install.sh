@@ -411,49 +411,45 @@ rm -f "$CRON_TMP"
 log "[*]" "Création de 'lamp'"
 cat << 'EOF' > /usr/local/bin/lamp
 #!/bin/sh
+set -eu
 set -a
 . "/etc/DomoNas/Credentials/credentials.env"
 set +a
+
 PATH_LAMP="${PATH_LAMP:-/media/Runable/Docker/Lamp}"
+PATH_MAPS="${PATH_MAPS:-/media/Docs01/Maps/20260726_Europa.pmtiles}"
+PATH_CREDS="${PATH_CREDS:-/etc/DomoNas/Credentials}"
 PORT_LAMP="${PORT_LAMP:-81}"
 mkdir -p "$PATH_LAMP"
+
 case "$1" in
     create)
-        docker rm -f lamp 2>/dev/null || true
-        docker pull php:8.2-apache || echo ""
-        docker run -d \
-            --name lamp \
-            --restart=unless-stopped \
-            -e TZ=CET \
-            -v "$PATH_LAMP:/var/www/html" \
-            -v /media/Docs01/Maps/20260726_Europa.pmtiles:/var/www/html/europe.pmtiles:ro \
-			-v /etc/DomoNas/Credentials:/etc/DomoNas/Credentials \
-            -v /media:/media \
-            -p "$PORT_LAMP:80" \
-            -p 3306:3306 \
-            php:8.2-apache
-        ;;
-    update)
-        OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' lamp 2>/dev/null || echo "")
-        docker pull php:8.2-apache || echo true
-        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' php:8.2-apache)
-        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
-            echo "l'image est déjà à jour. Aucune action requise."
+        echo "Vérification des mises à jour pour l'image php:8.2-apache..."
+        OLD_IMAGE_ID=$(docker images -q php:8.2-apache 2>/dev/null || echo "")
+        if ! docker pull php:8.2-apache; then
+            echo "Erreur : Impossible de télécharger l'image Docker." >&2
+            exit 1
+        fi
+        NEW_IMAGE_ID=$(docker images -q php:8.2-apache 2>/dev/null || echo "")
+        CONTAINER_EXISTS=$(docker ps -a -q -f name=^lamp$ 2>/dev/null || echo "")
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ] && [ -n "$CONTAINER_EXISTS" ]; then
+            echo "L'image est déjà à jour et le conteneur existe. Aucune action requise."
         else
+            echo "Mise à jour ou création du conteneur lamp..."
             docker rm -f lamp 2>/dev/null || true
-        	docker rm -f lamp 2>/dev/null || true
-        	docker run -d \
-	            --name lamp \
-            	--restart=unless-stopped \
-            	-e TZ=CET \
-            	-v "$PATH_LAMP:/var/www/html" \
-            	-v /media/Docs01/Maps/20260726_Europa.pmtiles:/var/www/html/europe.pmtiles:ro \
-				-v /etc/DomoNas/Credentials:/etc/DomoNas/Credentials \
-            	-v /media:/media \
-            	-p "$PORT_LAMP:80" \
-            	-p 3306:3306 \
-            	php:8.2-apache
-			fi
+            docker run -d \
+                --name lamp \
+                --restart=unless-stopped \
+                -e TZ=CET \
+                -v "$PATH_LAMP:/var/www/html" \
+                -v "$PATH_MAPS:/var/www/html/europe.pmtiles:ro" \
+                -v "$PATH_CREDS:/etc/DomoNas/Credentials" \
+                -v /media:/media \
+                -p "$PORT_LAMP:80" \
+                -p 3306:3306 \
+                php:8.2-apache
+            echo "Conteneur lamp créé avec succès."
+        fi
         ;;
     start)
         docker start lamp
@@ -465,7 +461,7 @@ case "$1" in
         docker restart lamp
         ;;
     *)
-        echo "Usage: lamp {create|start|stop|restart}"
+        echo "Usage: $0 {create|start|stop|restart}"
         exit 1
         ;;
 esac
