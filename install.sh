@@ -420,48 +420,56 @@ PATH_LAMP="${PATH_LAMP:-/media/Runable/Docker/Lamp}"
 PATH_MAPS="${PATH_MAPS:-/media/Docs01/Maps/20260726_Europa.pmtiles}"
 PATH_CREDS="${PATH_CREDS:-/etc/DomoNas/Credentials}"
 PORT_LAMP="${PORT_LAMP:-81}"
-mkdir -p "$PATH_LAMP"
 
+NAME="lamp"
+IMAGE="php:8.2-apache"
+mkdir -p "$PATH_LAMP"
+run_container() {
+    docker rm -f "$NAME" 2>/dev/null || true
+    docker run -d \
+        --name "$NAME" \
+        --restart=unless-stopped \
+        -e TZ=CET \
+        -v "$PATH_LAMP:/var/www/html" \
+        -v "$PATH_MAPS:/var/www/html/europe.pmtiles:ro" \
+        -v "$PATH_CREDS:/etc/DomoNas/Credentials" \
+        -v /media:/media \
+        -p "$PORT_LAMP:80" \
+        -p 3306:3306 \
+        "$IMAGE"
+}
 case "$1" in
     create)
-        echo "Vérification des mises à jour pour l'image php:8.2-apache..."
-        OLD_IMAGE_ID=$(docker images -q php:8.2-apache 2>/dev/null || echo "")
-        if ! docker pull php:8.2-apache; then
-            echo "Erreur : Impossible de télécharger l'image Docker." >&2
+        docker pull "$IMAGE"
+        run_container
+        echo "Conteneur $NAME créé avec succès."
+        ;;
+    update)
+        OLD_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        if ! docker pull "$IMAGE"; then
             exit 1
         fi
-        NEW_IMAGE_ID=$(docker images -q php:8.2-apache 2>/dev/null || echo "")
-        CONTAINER_EXISTS=$(docker ps -a -q -f name=^lamp$ 2>/dev/null || echo "")
+        NEW_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        CONTAINER_EXISTS=$(docker ps -a -q -f name=^"$NAME"$ 2>/dev/null || echo "")
+        
         if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ] && [ -n "$CONTAINER_EXISTS" ]; then
             echo "L'image est déjà à jour et le conteneur existe. Aucune action requise."
         else
-            echo "Mise à jour ou création du conteneur lamp..."
-            docker rm -f lamp 2>/dev/null || true
-            docker run -d \
-                --name lamp \
-                --restart=unless-stopped \
-                -e TZ=CET \
-                -v "$PATH_LAMP:/var/www/html" \
-                -v "$PATH_MAPS:/var/www/html/europe.pmtiles:ro" \
-                -v "$PATH_CREDS:/etc/DomoNas/Credentials" \
-                -v /media:/media \
-                -p "$PORT_LAMP:80" \
-                -p 3306:3306 \
-                php:8.2-apache
-            echo "Conteneur lamp créé avec succès."
+            run_container
+            echo "Conteneur $NAME mis à jour et créé avec succès."
         fi
         ;;
     start)
-        docker start lamp
+        docker start "$NAME"
         ;;
     stop)
-        docker stop lamp
+        docker stop "$NAME"
         ;;
     restart)
-        docker restart lamp
+        docker restart "$NAME"
         ;;
     *)
-        echo "Usage: $0 {create|start|stop|restart}"
+        echo "Usage: $0 {create|update|start|stop|restart}"
         exit 1
         ;;
 esac
