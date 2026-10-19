@@ -480,60 +480,65 @@ log "[+]" "Création de 'lamp'"
 log "[*]" "Création de 'homeassistant'"
 cat << 'EOF' > /usr/local/bin/homeassistant
 #!/bin/sh
+set -eu
 set -a
 . "/etc/DomoNas/Credentials/credentials.env"
 set +a
+
 PATH_HOMEASSISTANT="${PATH_HOMEASSISTANT:-/media/Runable/Docker/HomeAssistant}"
 PORT_HOMEASSISTANT="${PORT_HOMEASSISTANT:-1000}"
+
+NAME="homeassistant"
+IMAGE="homeassistant/home-assistant:latest"
 mkdir -p "$PATH_HOMEASSISTANT"
+run_container() {
+    docker rm -f "$NAME" 2>/dev/null || true
+    docker run -d \
+        --name "$NAME" \
+        --privileged \
+        --restart=unless-stopped \
+        --network=host \
+        -e TZ=CET \
+        -v "$PATH_HOMEASSISTANT:/config" \
+        --device /dev/dri:/dev/dri \
+        -v /etc/localtime:/etc/localtime:ro \
+        -p "$PORT_HOMEASSISTANT:8123" \
+        "$IMAGE"
+}
+
 case "$1" in
     create)
-        docker rm -f homeassistant 2>/dev/null || true
-        docker pull homeassistant/home-assistant:latest || echo ""
-        docker run -d \
-            --name homeassistant \
-            --privileged \
-            --restart=unless-stopped \
-            --network=host \
-            -e TZ=CET \
-            -v "$PATH_HOMEASSISTANT:/config" \
-            --device /dev/dri:/dev/dri \
-            -v /etc/localtime:/etc/localtime:ro \
-            -p "$PORT_HOMEASSISTANT:8123" \
-            homeassistant/home-assistant:latest
+        docker pull "$IMAGE"
+        run_container
+        echo "Conteneur $NAME créé avec succès."
         ;;
     update)
-		OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' homeassistant 2>/dev/null || echo "")
-        docker pull homeassistant/home-assistant:latest || echo ""
-        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' homeassistant/home-assistant:latest)
-        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
-            echo "L'image est déjà à jour. Aucune action requise."
+        OLD_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        if ! docker pull "$IMAGE"; then
+            echo "Erreur lors du téléchargement de l'image." >&2
+            exit 1
+        fi
+        NEW_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        CONTAINER_EXISTS=$(docker ps -a -q -f name=^"$NAME"$ 2>/dev/null || echo "")
+        
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ] && [ -n "$CONTAINER_EXISTS" ]; then
+            echo "L'image est déjà à jour et le conteneur existe. Aucune action requise."
         else
-        	docker rm -f homeassistant 2>/dev/null || true
-        	docker run -d \
-	            --name homeassistant \
-            	--privileged \
-            	--restart=unless-stopped \
-            	--network=host \
-            	-e TZ=CET \
-            	-v "$PATH_HOMEASSISTANT:/config" \
-	            --device /dev/dri:/dev/dri \
-            	-v /etc/localtime:/etc/localtime:ro \
-            	-p "$PORT_HOMEASSISTANT:8123" \
-            	homeassistant/home-assistant:latest
-			fi
+            run_container
+            echo "Conteneur $NAME mis à jour et créé avec succès."
+        fi
         ;;
     start)
-        docker start homeassistant
+        docker start "$NAME"
         ;;
     stop)
-        docker stop homeassistant
+        docker stop "$NAME"
         ;;
     restart)
-        docker restart homeassistant
+        docker restart "$NAME"
         ;;
     *)
-        echo "Usage: homeassistant {create|start|stop|restart}"
+        echo "Usage: $0 {create|update|start|stop|restart}"
         exit 1
         ;;
 esac
@@ -543,64 +548,66 @@ log "[+]" "Création de 'homeassistant'"
 log "[*]" "Création de 'jellyfin'"
 cat << 'EOF' > /usr/local/bin/jellyfin
 #!/bin/sh
+set -eu
 set -a
 . "/etc/DomoNas/Credentials/credentials.env"
 set +a
+
 PATH_JELLYFIN="${PATH_JELLYFIN:-/media/Runable/Docker/Jellyfin}"
 PORT_JELLYFIN="${PORT_JELLYFIN:-1001}"
+
+NAME="jellyfin"
+IMAGE="jellyfin/jellyfin:latest"
 mkdir -p "$PATH_JELLYFIN/config" "$PATH_JELLYFIN/cache"
+run_container() {
+    docker rm -f "$NAME" 2>/dev/null || true
+    docker run -d \
+        --name "$NAME" \
+        --restart=unless-stopped \
+        -e TZ=CET \
+        -v "$PATH_JELLYFIN/config:/config" \
+        -v "/media/:/media" \
+        -v "$PATH_JELLYFIN/cache:/cache" \
+        -p "$PORT_JELLYFIN:8096" \
+        -p 8920:8920 \
+        -e PUID=1000 \
+        -e PGID=1000 \
+        --device /dev/dri/renderD128:/dev/dri/renderD128 \
+        "$IMAGE"
+}
 case "$1" in
     create)
-        docker rm -f jellyfin 2>/dev/null || true
-        docker pull jellyfin/jellyfin:latest || echo " "
-        docker run -d \
-            --name jellyfin \
-            --restart=unless-stopped \
-            -e TZ=CET \
-            -v "$PATH_JELLYFIN/config:/config" \
-            -v "/media/:/media" \
-            -v "$PATH_JELLYFIN/cache:/cache" \
-            -p "$PORT_JELLYFIN:8096" \
-            -p 8920:8920 \
-            -e PUID=1000 \
-            -e PGID=1000 \
-            --device /dev/dri/renderD128:/dev/dri/renderD128 \
-            jellyfin/jellyfin:latest
+        docker pull "$IMAGE"
+        run_container
+        echo "Conteneur $NAME créé avec succès."
         ;;
     update)
-		OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' jellyfin 2>/dev/null || echo "")
-        docker pull jellyfin/jellyfin:latest || echo " "
-        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' jellyfin/jellyfin:latest)
-        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
-            echo "L'image est déjà à jour. Aucune action requise."
+        OLD_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        if ! docker pull "$IMAGE"; then
+            echo "Erreur lors du téléchargement de l'image." >&2
+            exit 1
+        fi
+        NEW_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        CONTAINER_EXISTS=$(docker ps -a -q -f name=^"$NAME"$ 2>/dev/null || echo "")
+        
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ] && [ -n "$CONTAINER_EXISTS" ]; then
+            echo "L'image est déjà à jour et le conteneur existe. Aucune action requise."
         else
-        	docker rm -f jellyfin 2>/dev/null || true
-        	docker run -d \
-	            --name jellyfin \
-            	--restart=unless-stopped \
-            	-e TZ=CET \
-            	-v "$PATH_JELLYFIN/config:/config" \
-            	-v "/media/:/media" \
-            	-v "$PATH_JELLYFIN/cache:/cache" \
-            	-p "$PORT_JELLYFIN:8096" \
-            	-p 8920:8920 \
-            	-e PUID=1000 \
-            	-e PGID=1000 \
-            	--device /dev/dri/renderD128:/dev/dri/renderD128 \
-            	jellyfin/jellyfin:latest
-			fi			
+            run_container
+            echo "Conteneur $NAME mis à jour et créé avec succès."
+        fi
         ;;
     start)
-        docker start jellyfin
+        docker start "$NAME"
         ;;
     stop)
-        docker stop jellyfin
+        docker stop "$NAME"
         ;;
     restart)
-        docker restart jellyfin
+        docker restart "$NAME"
         ;;
     *)
-        echo "Usage: jellyfin {create|start|stop|restart}"
+        echo "Usage: $0 {create|update|start|stop|restart}"
         exit 1
         ;;
 esac
@@ -610,9 +617,11 @@ log "[+]" "Création de 'jellyfin'"
 log "[*]" "Création de 'downbox'"
 cat << 'EOF' > /usr/local/bin/downbox
 #!/bin/sh
+set -eu
 set -a
 . "/etc/DomoNas/Credentials/credentials.env"
 set +a
+
 PATH_DOWNBOX="${PATH_DOWNBOX:-/media/Runable/Docker/DownBox}"
 PATH_TRANSMISSION="${PATH_TRANSMISSION:-/media/Runable/DownBox}"
 PORT_DOWNBOX="${PORT_DOWNBOX:-1002}"
@@ -620,102 +629,90 @@ USERNAME_VPN="${USERNAME_VPN:-mon_user_vpn}"
 PASSWORD_VPN="${PASSWORD_VPN:-mon_pass_vpn}"
 USERNAME_GENERAL="${USERNAME_GENERAL:-admin}"
 PASSWORD_GENERAL_LOW="${PASSWORD_GENERAL_LOW:-admin}"
+
+IMAGE_TR="haugene/transmission-openvpn:latest"
+IMAGE_PROXY="haugene/transmission-openvpn-proxy:latest"
+
 mkdir -p "$PATH_DOWNBOX/custom" "$PATH_DOWNBOX/config"
+run_transmission() {
+    docker run -d \
+        --name transmission \
+        --privileged \
+        --restart=unless-stopped \
+        -e PUID=1000 \
+        -e PGID=1000 \
+        -p 9091:9091 \
+        -p 51415:51414 \
+        -p 51415:51414/udp \
+        --cap-add=NET_ADMIN \
+        -e TRANSMISSION_WEB_UI=transmission-web-control \
+        -v "$PATH_DOWNBOX/custom:/etc/openvpn/custom" \
+        -v "$PATH_TRANSMISSION:/data" \
+        -v "$PATH_DOWNBOX/config:/config" \
+        -e OPENVPN_PROVIDER=CUSTOM \
+        -e OPENVPN_USERNAME="$USERNAME_VPN" \
+        -e OPENVPN_PASSWORD="$PASSWORD_VPN" \
+        -e TRANSMISSION_DOWNLOAD_DIR=/data/DownBox \
+        -e UFW_ALLOW_GW_NET=true \
+        -e UFW_EXTRA_PORTS=9910,23561,443,83,9091 \
+        -e DROP_DEFAULT_ROUTE=true \
+        -e TRANSMISSION_RPC_USERNAME="$USERNAME_GENERAL" \
+        -e TRANSMISSION_RPC_PASSWORD="$PASSWORD_GENERAL_LOW" \
+        -e TRANSMISSION_RPC_AUTHENTICATION_REQUIRED=true \
+        -e TRANSMISSION_RPC_WHITELIST_ENABLED=false \
+        -e LOCAL_NETWORK=192.168.1.0/32 \
+        --log-driver json-file \
+        --log-opt max-size=10m \
+        "$IMAGE_TR"
+}
+run_proxy() {
+    docker run -d \
+        --name downboxproxy \
+        --privileged \
+        --restart=unless-stopped \
+        --link transmission \
+        -p "$PORT_DOWNBOX:8080" \
+        "$IMAGE_PROXY"
+}
+
 case "$1" in
     create)
+        docker pull "$IMAGE_TR"
+        docker pull "$IMAGE_PROXY"
         docker rm -f transmission downboxproxy 2>/dev/null || true
-        docker pull haugene/transmission-openvpn:latest || true
-        docker pull haugene/transmission-openvpn-proxy:latest || true
-        docker run -d \
-            --name transmission \
-            --privileged \
-            --restart=unless-stopped \
-            -e PUID=1000 \
-            -e PGID=1000 \
-            -p 9091:9091 \
-            -p 51415:51414 \
-            -p 51415:51414/udp \
-            --cap-add=NET_ADMIN \
-            -e TRANSMISSION_WEB_UI=transmission-web-control \
-            -v "$PATH_DOWNBOX/custom:/etc/openvpn/custom" \
-            -v "$PATH_TRANSMISSION:/data" \
-            -v "$PATH_DOWNBOX/config:/config" \
-            -e OPENVPN_PROVIDER=CUSTOM \
-            -e OPENVPN_USERNAME="$USERNAME_VPN" \
-            -e OPENVPN_PASSWORD="$PASSWORD_VPN" \
-            -e TRANSMISSION_DOWNLOAD_DIR=/data/DownBox \
-            -e UFW_ALLOW_GW_NET=true \
-            -e UFW_EXTRA_PORTS=9910,23561,443,83,9091 \
-            -e DROP_DEFAULT_ROUTE=true \
-            -e TRANSMISSION_RPC_USERNAME="$USERNAME_GENERAL" \
-            -e TRANSMISSION_RPC_PASSWORD="$PASSWORD_GENERAL_LOW" \
-            -e TRANSMISSION_RPC_AUTHENTICATION_REQUIRED=true \
-            -e TRANSMISSION_RPC_WHITELIST_ENABLED=false \
-            -e LOCAL_NETWORK=192.168.1.0/32 \
-            --log-driver json-file \
-            --log-opt max-size=10m \
-            haugene/transmission-openvpn:latest
-        docker run -d \
-            --name downboxproxy \
-            --privileged \
-            --restart=unless-stopped \
-            --link transmission \
-            -p "$PORT_DOWNBOX:8080" \
-            haugene/transmission-openvpn-proxy:latest
+        run_transmission
+        run_proxy
+        echo "Stack DownBox (Transmission + Proxy) créée avec succès."
         ;;
     update)
-		OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' transmission 2>/dev/null || echo "")
-        docker pull haugene/transmission-openvpn:latest || true
-        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' haugene/transmission-openvpn:latest)
-        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
-            echo "L'image est déjà à jour. Aucune action requise."
+        # Gestion Transmission
+        OLD_TR_ID=$(docker images -q "$IMAGE_TR" 2>/dev/null || echo "")
+        if ! docker pull "$IMAGE_TR"; then
+            echo "Erreur lors du pull de l'image transmission." >&2
+            exit 1
+        fi
+        NEW_TR_ID=$(docker images -q "$IMAGE_TR" 2>/dev/null || echo "")
+        TR_EXISTS=$(docker ps -a -q -f name=^transmission$ 2>/dev/null || echo "")
+
+        # Gestion Proxy
+        OLD_PROXY_ID=$(docker images -q "$IMAGE_PROXY" 2>/dev/null || echo "")
+        if ! docker pull "$IMAGE_PROXY"; then
+            echo "Erreur lors du pull de l'image proxy." >&2
+            exit 1
+        fi
+        NEW_PROXY_ID=$(docker images -q "$IMAGE_PROXY" 2>/dev/null || echo "")
+        PROXY_EXISTS=$(docker ps -a -q -f name=^downboxproxy$ 2>/dev/null || echo "")
+
+        # Vérification si une mise à jour est nécessaire
+        if [ "$OLD_TR_ID" = "$NEW_TR_ID" ] && [ "$OLD_PROXY_ID" = "$NEW_PROXY_ID" ] && [ -n "$TR_EXISTS" ] && [ -n "$PROXY_EXISTS" ]; then
+            echo "Les images de la stack DownBox sont déjà à jour. Aucune action requise."
         else
-			docker rm -f transmission 2>/dev/null || true
-			docker run -d \
-	            --name transmission \
-            	--privileged \
-            	--restart=unless-stopped \
-            	-e PUID=1000 \
-            	-e PGID=1000 \
-            	-p 9091:9091 \
-            	-p 51415:51414 \
-            	-p 51415:51414/udp \
-            	--cap-add=NET_ADMIN \
-            	-e TRANSMISSION_WEB_UI=transmission-web-control \
-            	-v "$PATH_DOWNBOX/custom:/etc/openvpn/custom" \
-            	-v "$PATH_TRANSMISSION:/data" \
-            	-v "$PATH_DOWNBOX/config:/config" \
-            	-e OPENVPN_PROVIDER=CUSTOM \
-            	-e OPENVPN_USERNAME="$USERNAME_VPN" \
-            	-e OPENVPN_PASSWORD="$PASSWORD_VPN" \
-            	-e TRANSMISSION_DOWNLOAD_DIR=/data/DownBox \
-            	-e UFW_ALLOW_GW_NET=true \
-            	-e UFW_EXTRA_PORTS=9910,23561,443,83,9091 \
-            	-e DROP_DEFAULT_ROUTE=true \
-            	-e TRANSMISSION_RPC_USERNAME="$USERNAME_GENERAL" \
-            	-e TRANSMISSION_RPC_PASSWORD="$PASSWORD_GENERAL_LOW" \
-            	-e TRANSMISSION_RPC_AUTHENTICATION_REQUIRED=true \
-            	-e TRANSMISSION_RPC_WHITELIST_ENABLED=false \
-            	-e LOCAL_NETWORK=192.168.1.0/32 \
-            	--log-driver json-file \
-            	--log-opt max-size=10m \
-            	haugene/transmission-openvpn:latest
-		fi
-		OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' downboxproxy 2>/dev/null || echo "")
-        docker pull haugene/transmission-openvpn-proxy:latest || true
-        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' haugene/transmission-openvpn-proxy:latest)
-        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
-            echo "L'image est déjà à jour. Aucune action requise."
-        else
-        	docker rm -f transmission downboxproxy 2>/dev/null || true
-        	docker run -d \
-	            --name downboxproxy \
-            	--privileged \
-            	--restart=unless-stopped \
-            	--link transmission \
-            	-p "$PORT_DOWNBOX:8080" \
-            	haugene/transmission-openvpn-proxy:latest
-		fi
+            echo "Mise à jour des conteneurs DownBox..."
+            docker rm -f transmission downboxproxy 2>/dev/null || true
+            run_transmission
+            run_proxy
+            echo "Stack DownBox mise à jour avec succès."
+        fi
         ;;
     start)
         docker start transmission downboxproxy
@@ -727,7 +724,7 @@ case "$1" in
         docker restart transmission downboxproxy
         ;;
     *)
-        echo "Usage: transmission {create|start|stop|restart}"
+        echo "Usage: $0 {create|update|start|stop|restart}"
         exit 1
         ;;
 esac
@@ -738,89 +735,88 @@ log "[+]" "Création de 'downbox'"
 log "[*]" "Création de 'seedbox'"
 cat << 'EOF' > /usr/local/bin/seedbox
 #!/bin/sh
+set -eu
 set -a
 . "/etc/DomoNas/Credentials/credentials.env"
 set +a
+
 PATH_SEEDBOX="${PATH_SEEDBOX:-/media/Runable/Docker/Seedbox}"
 PATH_TRANSMISSION="${PATH_TRANSMISSION:-/media/Runable/DownBox}"
 PORT_SEEDBOX="${PORT_SEEDBOX:-1003}"
 USERNAME_GENERAL="${USERNAME_GENERAL:-admin}"
 PASSWORD_GENERAL_LOW="${PASSWORD_GENERAL_LOW:-admin}"
+
+NAME="seedbox"
+IMAGE="lscr.io/linuxserver/transmission:latest"
+
 mkdir -p "$PATH_SEEDBOX"
-case "$1" in
-    create)
-        docker rm -f seedbox 2>/dev/null || true
-        docker pull lscr.io/linuxserver/transmission:latest || echo ""
-        docker run -d \
-            --name seedbox \
-            --privileged \
-            --restart=unless-stopped \
-            -e TZ=CET \
-            -v "$PATH_SEEDBOX:/config" \
-            -v "$PATH_TRANSMISSION:/downloads" \
-            -p "$PORT_SEEDBOX:9091" \
-            -p 51413:51413 \
-            -p 51413:51413/udp \
-            -e PUID=1000 \
-            -e PGID=1000 \
-            -e USER="$USERNAME_GENERAL" \
-            -e PASS="$PASSWORD_GENERAL_LOW" \
-            -e TRANSMISSION_DOWNLOAD_DIR=/downloads/SeedBox \
-            lscr.io/linuxserver/transmission:latest
-        TMP_DIR="/tmp/twc_$(date +%s)"
-        mkdir -p "$TMP_DIR"
-        git clone https://github.com/ronggang/transmission-web-control.git "$TMP_DIR/twc" >/dev/null 2>&1
+run_container() {
+    docker rm -f "$NAME" 2>/dev/null || true
+    docker run -d \
+        --name "$NAME" \
+        --privileged \
+        --restart=unless-stopped \
+        -e TZ=CET \
+        -v "$PATH_SEEDBOX:/config" \
+        -v "$PATH_TRANSMISSION:/downloads" \
+        -p "$PORT_SEEDBOX:9091" \
+        -p 51413:51413 \
+        -p 51413:51413/udp \
+        -e PUID=1000 \
+        -e PGID=1000 \
+        -e USER="$USERNAME_GENERAL" \
+        -e PASS="$PASSWORD_GENERAL_LOW" \
+        -e TRANSMISSION_DOWNLOAD_DIR=/downloads/SeedBox \
+        "$IMAGE"
+}
+install_web_control() {
+    TMP_DIR="/tmp/twc_$(date +%s)"
+    mkdir -p "$TMP_DIR"
+    if git clone https://github.com/ronggang/transmission-web-control.git "$TMP_DIR/twc" >/dev/null 2>&1; then
         mkdir -p "$PATH_SEEDBOX/GUI"
         cp -r "$TMP_DIR/twc/src/"* "$PATH_SEEDBOX/GUI/"
-        rm -rf "$TMP_DIR"
-        sleep 3 # Laisse le temps au conteneur de s'initialiser
-        docker exec seedbox cp -r -f /config/GUI/* /usr/share/transmission/public_html/ 2>/dev/null || true
+    fi
+    rm -rf "$TMP_DIR"
+
+    sleep 10
+    docker exec "$NAME" cp -r -f /config/GUI/* /usr/share/transmission/public_html/ 2>/dev/null || true
+}
+
+case "$1" in
+    create)
+        docker pull "$IMAGE"
+        run_container
+        install_web_control
+        echo "Conteneur $NAME créé et configuré avec succès."
         ;;
     update)
-		OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' seedbox 2>/dev/null || echo "")
-        docker pull lscr.io/linuxserver/transmission:latest || echo ""
-        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' lscr.io/linuxserver/transmission:latest)
-        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
-            echo "L'image est déjà à jour. Aucune action requise."
+        OLD_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        if ! docker pull "$IMAGE"; then
+            echo "Erreur lors du téléchargement de l'image." >&2
+            exit 1
+        fi
+        NEW_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        CONTAINER_EXISTS=$(docker ps -a -q -f name=^"$NAME"$ 2>/dev/null || echo "")
+        
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ] && [ -n "$CONTAINER_EXISTS" ]; then
+            echo "L'image est déjà à jour et le conteneur existe. Aucune action requise."
         else
-        	docker rm -f seedbox 2>/dev/null || true
-        	docker run -d \
-	            --name seedbox \
-            	--privileged \
-            	--restart=unless-stopped \
-            	-e TZ=CET \
-            	-v "$PATH_SEEDBOX:/config" \
-            	-v "$PATH_TRANSMISSION:/downloads" \
-            	-p "$PORT_SEEDBOX:9091" \
-            	-p 51413:51413 \
-            	-p 51413:51413/udp \
-            	-e PUID=1000 \
-            	-e PGID=1000 \
-            	-e USER="$USERNAME_GENERAL" \
-            	-e PASS="$PASSWORD_GENERAL_LOW" \
-            	-e TRANSMISSION_DOWNLOAD_DIR=/downloads/SeedBox \
-            	lscr.io/linuxserver/transmission:latest
-        	TMP_DIR="/tmp/twc_$(date +%s)"
-        	mkdir -p "$TMP_DIR"
-        	git clone https://github.com/ronggang/transmission-web-control.git "$TMP_DIR/twc" >/dev/null 2>&1
-        	mkdir -p "$PATH_SEEDBOX/GUI"
-        	cp -r "$TMP_DIR/twc/src/"* "$PATH_SEEDBOX/GUI/"
-        	rm -rf "$TMP_DIR"
-        	sleep 3 # Laisse le temps au conteneur de s'initialiser
-        	docker exec seedbox cp -r -f /config/GUI/* /usr/share/transmission/public_html/ 2>/dev/null || true
-		fi
+            run_container
+            install_web_control
+            echo "Conteneur $NAME mis à jour avec succès."
+        fi
         ;;
     start)
-        docker start seedbox
+        docker start "$NAME"
         ;;
     stop)
-        docker stop seedbox
+        docker stop "$NAME"
         ;;
     restart)
-        docker restart seedbox
+        docker restart "$NAME"
         ;;
     *)
-        echo "Usage: seedbox {create|start|stop|restart}"
+        echo "Usage: $0 {create|update|start|stop|restart}"
         exit 1
         ;;
 esac
@@ -832,52 +828,63 @@ log "[+]" "Création de 'seedbox'"
 log "[*]" "Création de 'grocy'"
 cat << 'EOF' > /usr/local/bin/grocy
 #!/bin/sh
+set -eu
 set -a
 . "/etc/DomoNas/Credentials/credentials.env"
 set +a
+
 PATH_GROCY="${PATH_GROCY:-/media/Runable/Docker/Grocy}"
 PORT_GROCY="${PORT_GROCY:-1004}"
+
+NAME="grocy"
+IMAGE="lscr.io/linuxserver/grocy:latest"
+
 mkdir -p "$PATH_GROCY"
+
+run_container() {
+    docker rm -f "$NAME" 2>/dev/null || true
+    docker run -d \
+        --name "$NAME" \
+        --restart=unless-stopped \
+        -e TZ=CET \
+        -v "$PATH_GROCY:/config" \
+        -p "$PORT_GROCY:80" \
+        "$IMAGE"
+}
+
 case "$1" in
     create)
-        docker rm -f grocy 2>/dev/null || true
-        docker pull lscr.io/linuxserver/grocy:latest || echo ""
-        docker run -d \
-            --name grocy \
-            --restart=unless-stopped \
-            -e TZ=CET \
-            -v "$PATH_GROCY:/config" \
-            -p "$PORT_GROCY:80" \
-            lscr.io/linuxserver/grocy:latest
+        docker pull "$IMAGE"
+        run_container
+        echo "Conteneur $NAME créé avec succès."
         ;;
     update)
-		OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' grocy 2>/dev/null || echo "")
-        docker pull lscr.io/linuxserver/grocy:latest || echo ""
-        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' lscr.io/linuxserver/grocy:latest)
-        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
-            echo "L'image est déjà à jour. Aucune action requise."
+        OLD_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        if ! docker pull "$IMAGE"; then
+            echo "Erreur lors du téléchargement de l'image." >&2
+            exit 1
+        fi
+        NEW_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        CONTAINER_EXISTS=$(docker ps -a -q -f name=^"$NAME"$ 2>/dev/null || echo "")
+        
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ] && [ -n "$CONTAINER_EXISTS" ]; then
+            echo "L'image est déjà à jour et le conteneur existe. Aucune action requise."
         else
-        	docker rm -f grocy 2>/dev/null || true
-        	docker run -d \
-	            --name grocy \
-            	--restart=unless-stopped \
-            	-e TZ=CET \
-            	-v "$PATH_GROCY:/config" \
-            	-p "$PORT_GROCY:80" \
-            	lscr.io/linuxserver/grocy:latest
-		fi
+            run_container
+            echo "Conteneur $NAME mis à jour et créé avec succès."
+        fi
         ;;
     start)
-        docker start grocy
+        docker start "$NAME"
         ;;
     stop)
-        docker stop grocy
+        docker stop "$NAME"
         ;;
     restart)
-        docker restart grocy
+        docker restart "$NAME"
         ;;
     *)
-        echo "Usage: grocy {create|start|stop|restart}"
+        echo "Usage: $0 {create|update|start|stop|restart}"
         exit 1
         ;;
 esac
@@ -887,60 +894,66 @@ log "[+]" "Création de 'grocy'"
 log "[*]" "Création de 'portainer'"
 cat << 'EOF' > /usr/local/bin/portainer
 #!/bin/sh
+set -eu
 set -a
 . "/etc/DomoNas/Credentials/credentials.env"
 set +a
+
 PATH_PORTAINER="${PATH_PORTAINER:-/media/Runable/Docker/Portainer}"
 PORT_PORTAINER="${PORT_PORTAINER:-1005}"
+
+NAME="portainer"
+IMAGE="portainer/portainer-ce:latest"
+
 mkdir -p "$PATH_PORTAINER"
+run_container() {
+    docker rm -f "$NAME" 2>/dev/null || true
+    docker run -d \
+        --name "$NAME" \
+        --privileged \
+        --restart=unless-stopped \
+        -e TZ=CET \
+        -p 8000:8000 \
+        -p 9443:9443 \
+        -p "$PORT_PORTAINER:9000" \
+        -v /var/run/docker.sock:/var/run/docker.sock \
+        -v "$PATH_PORTAINER:/data" \
+        "$IMAGE"
+}
+
 case "$1" in
     create)
-        docker rm -f portainer 2>/dev/null || true
-        docker pull portainer/portainer-ce:latest || echo ""
-        docker run -d \
-            --name portainer \
-            --privileged \
-            --restart=unless-stopped \
-            -e TZ=CET \
-            -p 8000:8000 \
-            -p 9443:9443 \
-            -p "$PORT_PORTAINER:9000" \
-            -v /var/run/docker.sock:/var/run/docker.sock \
-            -v "$PATH_PORTAINER:/data" \
-            portainer/portainer-ce:latest
+        docker pull "$IMAGE"
+        run_container
+        echo "Conteneur $NAME créé avec succès."
         ;;
     update)
-		OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' portainer 2>/dev/null || echo "")
-        docker pull portainer/portainer-ce:latest || echo ""
-        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' portainer/portainer-ce:latest)
-        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
-            echo "L'image est déjà à jour. Aucune action requise."
+        OLD_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        if ! docker pull "$IMAGE"; then
+            echo "Erreur lors du téléchargement de l'image." >&2
+            exit 1
+        fi
+        NEW_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        CONTAINER_EXISTS=$(docker ps -a -q -f name=^"$NAME"$ 2>/dev/null || echo "")
+        
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ] && [ -n "$CONTAINER_EXISTS" ]; then
+            echo "L'image est déjà à jour et le conteneur existe. Aucune action requise."
         else
-        	docker rm -f portainer 2>/dev/null || true
-        	docker run -d \
-	            --name portainer \
-            	--privileged \
-            	--restart=unless-stopped \
-            	-e TZ=CET \
-            	-p 8000:8000 \
-            	-p 9443:9443 \
-            	-p "$PORT_PORTAINER:9000" \
-            	-v /var/run/docker.sock:/var/run/docker.sock \
-            	-v "$PATH_PORTAINER:/data" \
-            	portainer/portainer-ce:latest
-		fi
+            run_container
+            echo "Conteneur $NAME mis à jour et créé avec succès."
+        fi
         ;;
     start)
-        docker start portainer
+        docker start "$NAME"
         ;;
     stop)
-        docker stop portainer
+        docker stop "$NAME"
         ;;
     restart)
-        docker restart portainer
+        docker restart "$NAME"
         ;;
     *)
-        echo "Usage: portainer {create|start|stop|restart}"
+        echo "Usage: $0 {create|update|start|stop|restart}"
         exit 1
         ;;
 esac
@@ -952,56 +965,66 @@ log "[+]" "Création de 'portainer'"
 log "[*]" "Création de 'filebrowser'"
 cat << 'EOF' > /usr/local/bin/filebrowser
 #!/bin/sh
+set -eu
 set -a
 . "/etc/DomoNas/Credentials/credentials.env"
 set +a
+
 PATH_FILEBROWSER="${PATH_FILEBROWSER:-/media/Runable/Docker/Filebrowser}"
 PORT_FILEBROWSER="${PORT_FILEBROWSER:-1006}"
+
+NAME="filebrowser"
+IMAGE="gtstef/filebrowser:latest"
+
 mkdir -p "$PATH_FILEBROWSER/database" "$PATH_FILEBROWSER/config"
+
+# Fonction mutualisée pour lancer le conteneur
+run_container() {
+    docker rm -f "$NAME" 2>/dev/null || true
+    docker run -d \
+        --name "$NAME" \
+        --restart=unless-stopped \
+        -e TZ=CET \
+        -v "/media:/srv" \
+        -v "$PATH_FILEBROWSER/database:/database" \
+        -v "$PATH_FILEBROWSER/config:/config" \
+        -p "$PORT_FILEBROWSER:80" \
+        "$IMAGE"
+}
+
 case "$1" in
     create)
-        docker rm -f filebrowser 2>/dev/null || true
-        docker pull gtstef/filebrowser:latest || echo " "
-        docker run -d \
-            --name filebrowser \
-            --restart=unless-stopped \
-            -e TZ=CET \
-            -v "/media:/srv" \
-            -v "$PATH_FILEBROWSER/database:/database" \
-            -v "$PATH_FILEBROWSER/config:/config" \
-            -p "$PORT_FILEBROWSER:80" \
-            gtstef/filebrowser:latest
+        docker pull "$IMAGE"
+        run_container
+        echo "Conteneur $NAME créé avec succès."
         ;;
     update)
-		OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' filebrowser 2>/dev/null || echo "")
-        docker pull gtstef/filebrowser:latest || echo " "
-        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' gtstef/filebrowser:latest)
-        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
-            echo "L'image est déjà à jour. Aucune action requise."
+        OLD_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        if ! docker pull "$IMAGE"; then
+            echo "Erreur lors du téléchargement de l'image." >&2
+            exit 1
+        fi
+        NEW_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        CONTAINER_EXISTS=$(docker ps -a -q -f name=^"$NAME"$ 2>/dev/null || echo "")
+        
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ] && [ -n "$CONTAINER_EXISTS" ]; then
+            echo "L'image est déjà à jour et le conteneur existe. Aucune action requise."
         else
-        	docker rm -f filebrowser 2>/dev/null || true
-        	docker run -d \
-	            --name filebrowser \
-            	--restart=unless-stopped \
-            	-e TZ=CET \
-            	-v "/media:/srv" \
-            	-v "$PATH_FILEBROWSER/database:/database" \
-            	-v "$PATH_FILEBROWSER/config:/config" \
-            	-p "$PORT_FILEBROWSER:80" \
-            	gtstef/filebrowser:latest
-			fi
+            run_container
+            echo "Conteneur $NAME mis à jour et créé avec succès."
+        fi
         ;;
     start)
-        docker start filebrowser
+        docker start "$NAME"
         ;;
     stop)
-        docker stop filebrowser
+        docker stop "$NAME"
         ;;
     restart)
-        docker restart filebrowser
+        docker restart "$NAME"
         ;;
     *)
-        echo "Usage: filebrowser {create|start|stop|restart}"
+        echo "Usage: $0 {create|update|start|stop|restart}"
         exit 1
         ;;
 esac
@@ -1013,56 +1036,66 @@ log "[+]" "Création de 'filebrowser'"
 log "[*]" "Création de 'freshrss'"
 cat << 'EOF' > /usr/local/bin/freshrss
 #!/bin/sh
+set -eu
 set -a
 . "/etc/DomoNas/Credentials/credentials.env"
 set +a
+
 PATH_FRESHRSS="${PATH_FRESHRSS:-/media/Runable/Docker/FreshRSS}"
 PORT_FRESHRSS="${PORT_FRESHRSS:-1007}"
-mkdir -p "$PATH_FRESHRSS"
+
+NAME="freshrss"
+IMAGE="freshrss/freshrss:latest"
+
+mkdir -p "$PATH_FRESHRSS/data" "$PATH_FRESHRSS/extensions"
+
+# Fonction mutualisée pour lancer le conteneur
+run_container() {
+    docker rm -f "$NAME" 2>/dev/null || true
+    docker run -d \
+        --name "$NAME" \
+        --restart=unless-stopped \
+        -e TZ="Europe/Paris" \
+        -e CRON_MIN="1,31" \
+        -p "$PORT_FRESHRSS:80" \
+        -v "$PATH_FRESHRSS/data:/var/www/FreshRSS/data" \
+        -v "$PATH_FRESHRSS/extensions:/var/www/FreshRSS/extensions" \
+        "$IMAGE"
+}
+
 case "$1" in
     create)
-        docker rm -f freshrss 2>/dev/null || true
-		docker pull freshrss/freshrss:latest || echo ""
-		docker run -d \
-    		--name freshrss \
-    		--restart=unless-stopped \
-    		-e TZ="Europe/Paris" \
-    		-e CRON_MIN="1,31" \
-    		-p "$PORT_FRESHRSS:80" \
-    		-v "$PATH_FRESHRSS/data:/var/www/FreshRSS/data" \
-    		-v "$PATH_FRESHRSS/extensions:/var/www/FreshRSS/extensions" \
-    		freshrss/freshrss:latest
+        docker pull "$IMAGE"
+        run_container
+        echo "Conteneur $NAME créé avec succès."
         ;;
     update)
-		OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' freshrss 2>/dev/null || echo "")
-        docker pull freshrss/freshrss:latest || echo ""
-        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' freshrss/freshrss:latest)
-        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
-            echo "L'image est déjà à jour. Aucune action requise."
+        OLD_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        if ! docker pull "$IMAGE"; then
+            echo "Erreur lors du téléchargement de l'image." >&2
+            exit 1
+        fi
+        NEW_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        CONTAINER_EXISTS=$(docker ps -a -q -f name=^"$NAME"$ 2>/dev/null || echo "")
+        
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ] && [ -n "$CONTAINER_EXISTS" ]; then
+            echo "L'image est déjà à jour et le conteneur existe. Aucune action requise."
         else
-        	docker rm -f freshrss 2>/dev/null || true
-			docker run -d \
-	    		--name freshrss \
-    			--restart=unless-stopped \
-    			-e TZ="Europe/Paris" \
-    			-e CRON_MIN="1,31" \
-    			-p "$PORT_FRESHRSS:80" \
-    			-v "$PATH_FRESHRSS/data:/var/www/FreshRSS/data" \
-    			-v "$PATH_FRESHRSS/extensions:/var/www/FreshRSS/extensions" \
-    			freshrss/freshrss:latest
-		fi
+            run_container
+            echo "Conteneur $NAME mis à jour et créé avec succès."
+        fi
         ;;
     start)
-        docker start freshrss
+        docker start "$NAME"
         ;;
     stop)
-        docker stop freshrss
+        docker stop "$NAME"
         ;;
     restart)
-        docker restart freshrss
+        docker restart "$NAME"
         ;;
     *)
-        echo "Usage: freshrss {create|start|stop|restart}"
+        echo "Usage: $0 {create|update|start|stop|restart}"
         exit 1
         ;;
 esac
@@ -1074,62 +1107,76 @@ log "[+]" "Création de 'freshrss'"
 log "[*]" "Création de 'mqtt'"
 cat << 'EOF' > /usr/local/bin/mqtt
 #!/bin/sh
+set -eu
 set -a
 . "/etc/DomoNas/Credentials/credentials.env"
 set +a
+
 PATH_MQTT="${PATH_MQTT:-/media/Runable/Docker/MQTT}"
 PORT_MQTT="${PORT_MQTT:-1015}"
 USERNAME_GENERAL="${USERNAME_GENERAL:-admin}"
 PASSWORD_GENERAL_HIGH="${PASSWORD_GENERAL_HIGH:-administrateur}"
+
+NAME="mqtt"
+IMAGE="eclipse-mosquitto:latest"
+
 mkdir -p "$PATH_MQTT/config" "$PATH_MQTT/data"
+
+# Fonction mutualisée pour lancer le conteneur
+run_container() {
+    docker rm -f "$NAME" mstt 2>/dev/null || true
+    docker run -d \
+        --name "$NAME" \
+        --restart=unless-stopped \
+        -e TZ=CET \
+        -v "$PATH_MQTT/config:/mosquitto/config" \
+        -v "$PATH_MQTT/data:/mosquitto/data" \
+        -p "$PORT_MQTT:1883" \
+        -p 9001:9001 \
+        "$IMAGE"
+}
+
+# Fonction mutualisée pour configurer le mot de passe utilisateur MQTT
+setup_password() {
+    sleep 2 # Laisse le temps au conteneur de s'initialiser
+    docker exec "$NAME" sh -c "mosquitto_passwd -b /mosquitto/config/password.txt $USERNAME_GENERAL $PASSWORD_GENERAL_HIGH" 2>/dev/null || true
+}
+
 case "$1" in
     create)
-        docker rm -f mqtt mstt 2>/dev/null || true
-        docker pull eclipse-mosquitto:latest || echo ""
-        docker run -d \
-            --name mqtt \
-            --restart=unless-stopped \
-            -e TZ=CET \
-            -v "$PATH_MQTT/config:/mosquitto/config" \
-            -v "$PATH_MQTT/data:/mosquitto/data" \
-            -p "$PORT_MQTT:1883" \
-            -p 9001:9001 \
-            eclipse-mosquitto:latest
-        sleep 2
-        docker exec mqtt sh -c "mosquitto_passwd -b /mosquitto/config/password.txt $USERNAME_GENERAL $PASSWORD_GENERAL_HIGH" 2>/dev/null || true
+        docker pull "$IMAGE"
+        run_container
+        setup_password
+        echo "Conteneur $NAME créé et configuré avec succès."
         ;;
-     update)
-	 	OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' mqtt 2>/dev/null || echo "")
-        docker pull eclipse-mosquitto:latest || echo ""
-        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' eclipse-mosquitto:latest)
-        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
-            echo "L'image est déjà à jour. Aucune action requise."
+    update)
+        OLD_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        if ! docker pull "$IMAGE"; then
+            echo "Erreur lors du téléchargement de l'image." >&2
+            exit 1
+        fi
+        NEW_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        CONTAINER_EXISTS=$(docker ps -a -q -f name=^"$NAME"$ 2>/dev/null || echo "")
+        
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ] && [ -n "$CONTAINER_EXISTS" ]; then
+            echo "L'image est déjà à jour et le conteneur existe. Aucune action requise."
         else
-        	docker rm -f mqtt mstt 2>/dev/null || true
-        	docker run -d \
-	            --name mqtt \
-            	--restart=unless-stopped \
-            	-e TZ=CET \
-            	-v "$PATH_MQTT/config:/mosquitto/config" \
-            	-v "$PATH_MQTT/data:/mosquitto/data" \
-	            -p "$PORT_MQTT:1883" \
-            	-p 9001:9001 \
-            	eclipse-mosquitto:latest
-        	sleep 2
-        	docker exec mqtt sh -c "mosquitto_passwd -b /mosquitto/config/password.txt $USERNAME_GENERAL $PASSWORD_GENERAL_HIGH" 2>/dev/null || true
-		fi
+            run_container
+            setup_password
+            echo "Conteneur $NAME mis à jour et configuré avec succès."
+        fi
         ;;
     start)
-        docker start mqtt
+        docker start "$NAME"
         ;;
     stop)
-        docker stop mqtt
+        docker stop "$NAME"
         ;;
     restart)
-        docker restart mqtt
+        docker restart "$NAME"
         ;;
     *)
-        echo "Usage: mqtt {create|start|stop|restart}"
+        echo "Usage: $0 {create|update|start|stop|restart}"
         exit 1
         ;;
 esac
@@ -1141,56 +1188,66 @@ log "[+]" "Création de 'mqtt'"
 log "[*]" "Création de 'gitea'"
 cat << 'EOF' > /usr/local/bin/gitea
 #!/bin/sh
+set -eu
 set -a
 . "/etc/DomoNas/Credentials/credentials.env"
 set +a
+
 PATH_GITEA="${PATH_GITEA:-/media/Runable/Docker/Gitea}"
 PORT_GITEA="${PORT_GITEA:-1010}"
+
+NAME="gitea"
+IMAGE="gitea/gitea:latest"
+
 mkdir -p "$PATH_GITEA"
+
+# Fonction mutualisée pour lancer le conteneur
+run_container() {
+    docker rm -f "$NAME" 2>/dev/null || true
+    docker run -d \
+        --name "$NAME" \
+        --restart=unless-stopped \
+        -p "$PORT_GITEA:3000" \
+        -p 2222:22 \
+        -v "$PATH_GITEA:/data" \
+        -v /etc/timezone:/etc/timezone:ro \
+        -v /etc/localtime:/etc/localtime:ro \
+        "$IMAGE"
+}
+
 case "$1" in
     create)
-        docker rm -f gitea 2>/dev/null || true
-        docker pull gitea/gitea:latest || echo ""
-        docker run -d \
-            --name gitea \
-            --restart=unless-stopped \
-            -p "$PORT_GITEA:3000" \
-            -p 2222:22 \
-            -v "$PATH_GITEA:/data" \
-            -v /etc/timezone:/etc/timezone:ro \
-            -v /etc/localtime:/etc/localtime:ro \
-            gitea/gitea:latest
+        docker pull "$IMAGE"
+        run_container
+        echo "Conteneur $NAME créé avec succès."
         ;;
     update)
-		OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' gitea 2>/dev/null || echo "")
-        docker pull gitea/gitea:latest || echo ""
-        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' gitea/gitea:latest)
-        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
-            echo "L'image est déjà à jour. Aucune action requise."
+        OLD_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        if ! docker pull "$IMAGE"; then
+            echo "Erreur lors du téléchargement de l'image." >&2
+            exit 1
+        fi
+        NEW_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        CONTAINER_EXISTS=$(docker ps -a -q -f name=^"$NAME"$ 2>/dev/null || echo "")
+        
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ] && [ -n "$CONTAINER_EXISTS" ]; then
+            echo "L'image est déjà à jour et le conteneur existe. Aucune action requise."
         else
-        	docker rm -f gitea 2>/dev/null || true
-        	docker run -d \
-	            --name gitea \
-            	--restart=unless-stopped \
-            	-p "$PORT_GITEA:3000" \
-            	-p 2222:22 \
-            	-v "$PATH_GITEA:/data" \
-            	-v /etc/timezone:/etc/timezone:ro \
-            	-v /etc/localtime:/etc/localtime:ro \
-            	gitea/gitea:latest
-		fi
+            run_container
+            echo "Conteneur $NAME mis à jour et créé avec succès."
+        fi
         ;;
     start)
-        docker start gitea
+        docker start "$NAME"
         ;;
     stop)
-        docker stop gitea
+        docker stop "$NAME"
         ;;
     restart)
-        docker restart gitea
+        docker restart "$NAME"
         ;;
     *)
-        echo "Usage: gitea {create|start|stop|restart}"
+        echo "Usage: $0 {create|update|start|stop|restart}"
         exit 1
         ;;
 esac
@@ -1202,61 +1259,69 @@ log "[+]" "Création de 'gitea'"
 log "[*]" "Création de 'siyuan'"
 cat << 'EOF' > /usr/local/bin/siyuan
 #!/bin/sh
+set -eu
 set -a
 . "/etc/DomoNas/Credentials/credentials.env"
 set +a
+
 PATH_SIYUAN="${PATH_SIYUAN:-/media/Runable/Docker/SiYuan}"
 PORT_SIYUAN="${PORT_SIYUAN:-6806}"
 PASSWORD_GENERAL_HIGH="${PASSWORD_GENERAL_HIGH:-password}"
+
+NAME="siyuan"
+IMAGE="b3log/siyuan:latest"
+
 mkdir -p "$PATH_SIYUAN"
+
+# Fonction mutualisée pour lancer le conteneur
+run_container() {
+    docker rm -f "$NAME" 2>/dev/null || true
+    docker run -d \
+        --name "$NAME" \
+        --restart=unless-stopped \
+        -v "$PATH_SIYUAN:/siyuan/workspace" \
+        -p "$PORT_SIYUAN:6806" \
+        -e PUID=1000 \
+        -e PGID=1000 \
+        "$IMAGE" \
+        serve \
+        --workspace=/siyuan/workspace \
+        --accessAuthCode="$PASSWORD_GENERAL_HIGH"
+}
+
 case "$1" in
     create)
-        docker rm -f siyuan 2>/dev/null || true
-        docker pull b3log/siyuan:latest || echo ""
-        docker run -d \
-            --name siyuan \
-            --restart=unless-stopped \
-            -v "$PATH_SIYUAN:/siyuan/workspace" \
-            -p "$PORT_SIYUAN:6806" \
-            -e PUID=1000 \
-            -e PGID=1000 \
-            b3log/siyuan:latest \
-            serve \
-            --workspace=/siyuan/workspace \
-            --accessAuthCode="$PASSWORD_GENERAL_HIGH"
+        docker pull "$IMAGE"
+        run_container
+        echo "Conteneur $NAME créé avec succès."
         ;;
     update)
-		OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' siyuan 2>/dev/null || echo "")
-        docker pull b3log/siyuan:latest || echo ""
-        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' b3log/siyuan:latest)
-        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
-            echo "L'image est déjà à jour. Aucune action requise."
+        OLD_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        if ! docker pull "$IMAGE"; then
+            echo "Erreur lors du téléchargement de l'image." >&2
+            exit 1
+        fi
+        NEW_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        CONTAINER_EXISTS=$(docker ps -a -q -f name=^"$NAME"$ 2>/dev/null || echo "")
+        
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ] && [ -n "$CONTAINER_EXISTS" ]; then
+            echo "L'image est déjà à jour et le conteneur existe. Aucune action requise."
         else
-        	docker rm -f siyuan 2>/dev/null || true
-        	docker run -d \
-	            --name siyuan \
-            	--restart=unless-stopped \
-            	-v "$PATH_SIYUAN:/siyuan/workspace" \
-            	-p "$PORT_SIYUAN:6806" \
-            	-e PUID=1000 \
-            	-e PGID=1000 \
-				-e SIYUAN_ACCESS_AUTH_CODE_BYPASS=true \
-            	b3log/siyuan:latest \
-            	serve \
-            	--workspace=/siyuan/workspace
-		fi
+            run_container
+            echo "Conteneur $NAME mis à jour et créé avec succès."
+        fi
         ;;
     start)
-        docker start siyuan
+        docker start "$NAME"
         ;;
     stop)
-        docker stop siyuan
+        docker stop "$NAME"
         ;;
     restart)
-        docker restart siyuan
+        docker restart "$NAME"
         ;;
     *)
-        echo "Usage: siyuan {create|start|stop|restart}"
+        echo "Usage: $0 {create|update|start|stop|restart}"
         exit 1
         ;;
 esac
@@ -1268,50 +1333,63 @@ log "[+]" "Création de 'siyuan'"
 log "[*]" "Création de 'myelectricaldata'"
 cat << 'EOF' > /usr/local/bin/myelectricaldata
 #!/bin/sh
+set -eu
 set -a
 . "/etc/DomoNas/Credentials/credentials.env"
 set +a
+
 PATH_MED="${PATH_MED:-/media/Runable/Docker/MyElectricalData/config.yaml}"
 PORT_MED="${PORT_MED:-5000}"
+
+NAME="myelectricaldata"
+IMAGE="m4dm4rtig4n/myelectricaldata:latest"
+
 mkdir -p "$(dirname "$PATH_MED")"
+
+# Fonction mutualisée pour lancer le conteneur
+run_container() {
+    docker rm -f med "$NAME" 2>/dev/null || true
+    docker run -d \
+        --name "$NAME" \
+        --restart=unless-stopped \
+        -p "$PORT_MED:5000" \
+        -v "$PATH_MED:/data/config.yaml" \
+        "$IMAGE"
+}
+
 case "$1" in
     create)
-        docker rm -f med myelectricaldata 2>/dev/null || true
-        docker pull m4dm4rtig4n/myelectricaldata:latest || echo ""
-        docker run -d \
-            --name myelectricaldata \
-            --restart=unless-stopped \
-            -p "$PORT_MED:5000" \
-            -v "$PATH_MED:/data/config.yaml" \
-            m4dm4rtig4n/myelectricaldata:latest
+        docker pull "$IMAGE"
+        run_container
+        echo "Conteneur $NAME créé avec succès."
         ;;
     update)
-		OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' myelectricaldata 2>/dev/null || echo "")
-        docker pull m4dm4rtig4n/myelectricaldata:latest || echo ""
-        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' m4dm4rtig4n/myelectricaldata:latest)
-        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
-            echo "L'image est déjà à jour. Aucune action requise."
+        OLD_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        if ! docker pull "$IMAGE"; then
+            echo "Erreur lors du téléchargement de l'image." >&2
+            exit 1
+        fi
+        NEW_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        CONTAINER_EXISTS=$(docker ps -a -q -f name=^"$NAME"$ 2>/dev/null || echo "")
+        
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ] && [ -n "$CONTAINER_EXISTS" ]; then
+            echo "L'image est déjà à jour et le conteneur existe. Aucune action requise."
         else
-        	docker rm -f med myelectricaldata 2>/dev/null || true
-        	docker run -d \
-	            --name myelectricaldata \
-            	--restart=unless-stopped \
-            	-p "$PORT_MED:5000" \
-            	-v "$PATH_MED:/data/config.yaml" \
-            	m4dm4rtig4n/myelectricaldata:latest
-		fi
+            run_container
+            echo "Conteneur $NAME mis à jour et créé avec succès."
+        fi
         ;;
     start)
-        docker start myelectricaldata
+        docker start "$NAME"
         ;;
     stop)
-        docker stop myelectricaldata
+        docker stop "$NAME"
         ;;
     restart)
-        docker restart myelectricaldata
+        docker restart "$NAME"
         ;;
     *)
-        echo "Usage: myelectricaldata {create|start|stop|restart}"
+        echo "Usage: $0 {create|update|start|stop|restart}"
         exit 1
         ;;
 esac
@@ -1323,52 +1401,64 @@ log "[+]" "Création de 'myelectricaldata'"
 log "[*]" "Création de 'kiwix'"
 cat << 'EOF' > /usr/local/bin/kiwix
 #!/bin/sh
+set -eu
 set -a
 . "/etc/DomoNas/Credentials/credentials.env"
 set +a
+
 PATH_KIWIX="${PATH_KIWIX:-/media/Docs01/Kiwix}"
 PORT_KIWIX="${PORT_KIWIX:-1011}"
+
+NAME="kiwix"
+IMAGE="ghcr.io/kiwix/kiwix-serve:latest"
+
 mkdir -p "$PATH_KIWIX"
+
+# Fonction mutualisée pour lancer le conteneur
+run_container() {
+    docker rm -f "$NAME" 2>/dev/null || true
+    docker run -d \
+        --name "$NAME" \
+        --restart=unless-stopped \
+        -p "$PORT_KIWIX:8080" \
+        -v "$PATH_KIWIX:/data" \
+        "$IMAGE" \
+        /data/*.zim
+}
+
 case "$1" in
     create)
-        docker rm -f kiwix 2>/dev/null || true
-        docker pull ghcr.io/kiwix/kiwix-serve:latest || echo ""
-        docker run -d \
-            --name kiwix \
-            --restart=unless-stopped \
-            -p "$PORT_KIWIX:8080" \
-            -v "$PATH_KIWIX:/data" \
-            ghcr.io/kiwix/kiwix-serve:latest \
-            /data/*.zim
+        docker pull "$IMAGE"
+        run_container
+        echo "Conteneur $NAME créé avec succès."
         ;;
     update)
-		OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' kiwix 2>/dev/null || echo "")
-        docker pull ghcr.io/kiwix/kiwix-serve:latest || echo ""
-        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' ghcr.io/kiwix/kiwix-serve:latest)
-        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
-            echo "L'image est déjà à jour. Aucune action requise."
+        OLD_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        if ! docker pull "$IMAGE"; then
+            echo "Erreur lors du téléchargement de l'image." >&2
+            exit 1
+        fi
+        NEW_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        CONTAINER_EXISTS=$(docker ps -a -q -f name=^"$NAME"$ 2>/dev/null || echo "")
+        
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ] && [ -n "$CONTAINER_EXISTS" ]; then
+            echo "L'image est déjà à jour et le conteneur existe. Aucune action requise."
         else
-        	docker rm -f kiwix 2>/dev/null || true
-        	docker run -d \
-	            --name kiwix \
-            	--restart=unless-stopped \
-            	-p "$PORT_KIWIX:8080" \
-            	-v "$PATH_KIWIX:/data" \
-            	ghcr.io/kiwix/kiwix-serve:latest \
-            	/data/*.zim
-		fi
+            run_container
+            echo "Conteneur $NAME mis à jour et créé avec succès."
+        fi
         ;;
     start)
-        docker start kiwix
+        docker start "$NAME"
         ;;
     stop)
-        docker stop kiwix
+        docker stop "$NAME"
         ;;
     restart)
-        docker restart kiwix
+        docker restart "$NAME"
         ;;
     *)
-        echo "Usage: kiwix {create|start|stop|restart}"
+        echo "Usage: $0 {create|update|start|stop|restart}"
         exit 1
         ;;
 esac
@@ -1380,50 +1470,63 @@ log "[+]" "Création de 'kiwix'"
 log "[*]" "Création de 'kolibri'"
 cat << 'EOF' > /usr/local/bin/kolibri
 #!/bin/sh
+set -eu
 set -a
 . "/etc/DomoNas/Credentials/credentials.env"
 set +a
+
 PATH_KOLIBRI="${PATH_KOLIBRI:-/media/Runable/Docker/Kolibri}"
 PORT_KOLIBRI="${PORT_KOLIBRI:-1012}"
+
+NAME="kolibri"
+IMAGE="learningequality/kolibri:latest"
+
 mkdir -p "$PATH_KOLIBRI"
+
+# Fonction mutualisée pour lancer le conteneur
+run_container() {
+    docker rm -f "$NAME" 2>/dev/null || true
+    docker run -d \
+        --name "$NAME" \
+        --restart=unless-stopped \
+        -p "$PORT_KOLIBRI:8080" \
+        -v "$PATH_KOLIBRI:/kolibri" \
+        "$IMAGE"
+}
+
 case "$1" in
     create)
-        docker rm -f kolibri 2>/dev/null || true
-        docker pull learningequality/kolibri:latest || echo ""
-        docker run -d \
-            --name kolibri \
-            --restart=unless-stopped \
-            -p "$PORT_KOLIBRI:8080" \
-            -v "$PATH_KOLIBRI:/kolibri" \
-            learningequality/kolibri:latest
+        docker pull "$IMAGE"
+        run_container
+        echo "Conteneur $NAME créé avec succès."
         ;;
     update)
-		OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' kolibri 2>/dev/null || echo "")
-        docker pull learningequality/kolibri:latest || echo ""
-        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' learningequality/kolibri:latest)
-        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
-            echo "L'image est déjà à jour. Aucune action requise."
+        OLD_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        if ! docker pull "$IMAGE"; then
+            echo "Erreur lors du téléchargement de l'image." >&2
+            exit 1
+        fi
+        NEW_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        CONTAINER_EXISTS=$(docker ps -a -q -f name=^"$NAME"$ 2>/dev/null || echo "")
+        
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ] && [ -n "$CONTAINER_EXISTS" ]; then
+            echo "L'image est déjà à jour et le conteneur existe. Aucune action requise."
         else
-        	docker rm -f kolibri 2>/dev/null || true
-        	docker run -d \
-	            --name kolibri \
-            	--restart=unless-stopped \
-            	-p "$PORT_KOLIBRI:8080" \
-            	-v "$PATH_KOLIBRI:/kolibri" \
-            	learningequality/kolibri:latest
-		fi
+            run_container
+            echo "Conteneur $NAME mis à jour et créé avec succès."
+        fi
         ;;
     start)
-        docker start kolibri
+        docker start "$NAME"
         ;;
     stop)
-        docker stop kolibri
+        docker stop "$NAME"
         ;;
     restart)
-        docker restart kolibri
+        docker restart "$NAME"
         ;;
     *)
-        echo "Usage: kolibri {create|start|stop|restart}"
+        echo "Usage: $0 {create|update|start|stop|restart}"
         exit 1
         ;;
 esac
@@ -1435,46 +1538,59 @@ log "[+]" "Création de 'kolibri'"
 log "[*]" "Création de 'cyberchef'"
 cat << 'EOF' > /usr/local/bin/cyberchef
 #!/bin/sh
+set -eu
 set -a
 . "/etc/DomoNas/Credentials/credentials.env"
 set +a
+
 PORT_CYBERCHEF="${PORT_CYBERCHEF:-8000}"
+
+NAME="cyberchef"
+IMAGE="mpepping/cyberchef:latest"
+
+# Fonction mutualisée pour lancer le conteneur
+run_container() {
+    docker rm -f "$NAME" 2>/dev/null || true
+    docker run -d \
+        --name "$NAME" \
+        --restart=unless-stopped \
+        -p "$PORT_CYBERCHEF:8000" \
+        "$IMAGE"
+}
+
 case "$1" in
     create)
-        docker rm -f cyberchef 2>/dev/null || true
-        docker pull mpepping/cyberchef:latest || echo ""
-        docker run -d \
-            --name cyberchef \
-            --restart=unless-stopped \
-            -p "$PORT_CYBERCHEF:8000" \
-            mpepping/cyberchef:latest
+        docker pull "$IMAGE"
+        run_container
+        echo "Conteneur $NAME créé avec succès."
         ;;
     update)
-		OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' cyberchef 2>/dev/null || echo "")
-        docker pull mpepping/cyberchef:latest || echo ""
-        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' mpepping/cyberchef:latest)
-        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
-            echo "L'image est déjà à jour. Aucune action requise."
+        OLD_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        if ! docker pull "$IMAGE"; then
+            echo "Erreur lors du téléchargement de l'image." >&2
+            exit 1
+        fi
+        NEW_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        CONTAINER_EXISTS=$(docker ps -a -q -f name=^"$NAME"$ 2>/dev/null || echo "")
+        
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ] && [ -n "$CONTAINER_EXISTS" ]; then
+            echo "L'image est déjà à jour et le conteneur existe. Aucune action requise."
         else
-        	docker rm -f cyberchef 2>/dev/null || true
-        	docker run -d \
-	            --name cyberchef \
-            	--restart=unless-stopped \
-            	-p "$PORT_CYBERCHEF:8000" \
-            	mpepping/cyberchef:latest
-		fi
+            run_container
+            echo "Conteneur $NAME mis à jour et créé avec succès."
+        fi
         ;;
     start)
-        docker start cyberchef
+        docker start "$NAME"
         ;;
     stop)
-        docker stop cyberchef
+        docker stop "$NAME"
         ;;
     restart)
-        docker restart cyberchef
+        docker restart "$NAME"
         ;;
     *)
-        echo "Usage: cyberchef {create|start|stop|restart}"
+        echo "Usage: $0 {create|update|start|stop|restart}"
         exit 1
         ;;
 esac
@@ -1486,68 +1602,77 @@ log "[+]" "Création de 'cyberchef'"
 log "[*]" "Création de 'vaultwarden'"
 cat << 'EOF' > /usr/local/bin/vaultwarden
 #!/bin/sh
+set -eu
 set -a
 . "/etc/DomoNas/Credentials/credentials.env"
 set +a
+
 PATH_VAULTWARDEN="${PATH_VAULTWARDEN:-/media/Runable/Docker/Vaultwarden}"
 PORT_VAULTWARDEN="${PORT_VAULTWARDEN:-1013}"
+
+NAME="vaultwarden"
+IMAGE="vaultwarden/server:latest"
+
 mkdir -p "$PATH_VAULTWARDEN/ssl"
+
+# Fonction mutualisée pour générer le certificat SSL si nécessaire
+setup_ssl() {
+    if [ ! -f "$PATH_VAULTWARDEN/ssl/vaultwarden.crt" ] || [ ! -f "$PATH_VAULTWARDEN/ssl/vaultwarden.key" ]; then
+        openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+            -keyout "$PATH_VAULTWARDEN/ssl/vaultwarden.key" \
+            -out "$PATH_VAULTWARDEN/ssl/vaultwarden.crt" \
+            -subj "/CN=domonas.local/O=DomoNas/C=FR" 2>/dev/null
+    fi
+}
+
+# Fonction mutualisée pour lancer le conteneur
+run_container() {
+    setup_ssl
+    docker rm -f "$NAME" 2>/dev/null || true
+    docker run -d \
+        --name "$NAME" \
+        -e WEBSOCKET_ENABLED=true \
+        -e ROCKET_TLS='{certs="/data/ssl/vaultwarden.crt",key="/data/ssl/vaultwarden.key"}' \
+        -v "$PATH_VAULTWARDEN:/data" \
+        -p "$PORT_VAULTWARDEN:80" \
+        -p 3012:3012 \
+        --restart unless-stopped \
+        "$IMAGE"
+}
+
 case "$1" in
     create)
-        if [ ! -f "$PATH_VAULTWARDEN/ssl/vaultwarden.crt" ] || [ ! -f "$PATH_VAULTWARDEN/ssl/vaultwarden.key" ]; then
-            openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
-                -keyout "$PATH_VAULTWARDEN/ssl/vaultwarden.key" \
-                -out "$PATH_VAULTWARDEN/ssl/vaultwarden.crt" \
-                -subj "/CN=domonas.local/O=DomoNas/C=FR" 2>/dev/null
-        fi
-        docker rm -f vaultwarden 2>/dev/null || true
-        docker pull vaultwarden/server:latest || echo ""
-        docker run -d \
-            --name vaultwarden \
-            -e WEBSOCKET_ENABLED=true \
-            -e ROCKET_TLS='{certs="/data/ssl/vaultwarden.crt",key="/data/ssl/vaultwarden.key"}' \
-            -v "$PATH_VAULTWARDEN:/data" \
-            -p "$PORT_VAULTWARDEN:80" \
-            -p 3012:3012 \
-            --restart unless-stopped \
-            vaultwarden/server:latest
+        docker pull "$IMAGE"
+        run_container
+        echo "Conteneur $NAME créé avec succès."
         ;;
     update)
-		OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' vaultwarden 2>/dev/null || echo "")
-        docker pull vaultwarden/server:latest || echo ""
-        NEW_IMAGE_ID=$(docker inspect --format='{{.Id}}' vaultwarden/server:latest)
-        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ]; then
-            echo "L'image est déjà à jour. Aucune action requise."
+        OLD_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        if ! docker pull "$IMAGE"; then
+            echo "Erreur lors du téléchargement de l'image." >&2
+            exit 1
+        fi
+        NEW_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        CONTAINER_EXISTS=$(docker ps -a -q -f name=^"$NAME"$ 2>/dev/null || echo "")
+        
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ] && [ -n "$CONTAINER_EXISTS" ]; then
+            echo "L'image est déjà à jour et le conteneur existe. Aucune action requise."
         else
-        	if [ ! -f "$PATH_VAULTWARDEN/ssl/vaultwarden.crt" ] || [ ! -f "$PATH_VAULTWARDEN/ssl/vaultwarden.key" ]; then
-	            openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
-                	-keyout "$PATH_VAULTWARDEN/ssl/vaultwarden.key" \
-                	-out "$PATH_VAULTWARDEN/ssl/vaultwarden.crt" \
-                	-subj "/CN=domonas.local/O=DomoNas/C=FR" 2>/dev/null
-        	fi
-        	docker rm -f vaultwarden 2>/dev/null || true
-        	docker run -d \
-	            --name vaultwarden \
-            	-e WEBSOCKET_ENABLED=true \
-            	-e ROCKET_TLS='{certs="/data/ssl/vaultwarden.crt",key="/data/ssl/vaultwarden.key"}' \
-            	-v "$PATH_VAULTWARDEN:/data" \
-            	-p "$PORT_VAULTWARDEN:80" \
-            	-p 3012:3012 \
-            	--restart unless-stopped \
-            	vaultwarden/server:latest
-		fi
+            run_container
+            echo "Conteneur $NAME mis à jour et créé avec succès."
+        fi
         ;;
     start)
-        docker start vaultwarden
+        docker start "$NAME"
         ;;
     stop)
-        docker stop vaultwarden
+        docker stop "$NAME"
         ;;
     restart)
-        docker restart vaultwarden
+        docker restart "$NAME"
         ;;
     *)
-        echo "Usage: vaultwarden {create|start|stop|restart}"
+        echo "Usage: $0 {create|update|start|stop|restart}"
         exit 1
         ;;
 esac
@@ -1559,94 +1684,112 @@ log "[+]" "Création de 'vaultwarden'"
 log "[*]" "Création de 'immich'"
 cat << 'EOF' > /usr/local/bin/immich
 #!/bin/sh
+set -eu
 set -a
 . "/etc/DomoNas/Credentials/credentials.env"
 set +a
-PATH_IMMICH="${PATH_IMMICH:-/media/Docs01/Immich}"
+
+PATH_IMMICH="${PATH_IMMICH:-/media/Runable/Docker/Immich}"
 PORT_IMMICH="${PORT_IMMICH:-1016}"
 USERNAME_GENERAL="${USERNAME_GENERAL:-admin}"
 PASSWORD_GENERAL_LOW="${PASSWORD_GENERAL_LOW:-administrateur}"
-mkdir -p "$PATH_IMMICH"
+
+IMAGE_PG="ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0"
+IMAGE_REDIS="docker.io/valkey/valkey:8"
+IMAGE_SERVER="ghcr.io/immich-app/immich-server:release"
+
+mkdir -p "$PATH_IMMICH/postgres" "$PATH_IMMICH/data"
+
+# Fonction pour créer le réseau si absent
+create_network() {
+    docker network create immich_net 2>/dev/null || true
+}
+
+# Fonction mutualisée pour lancer la stack Immich
+run_containers() {
+    create_network
+    docker rm -f immich_server immich_redis immich_postgres 2>/dev/null || true
+
+    # 1. Postgres
+    docker run -d \
+        --name immich_postgres \
+        --restart unless-stopped \
+        --network immich_net \
+        -e POSTGRES_USER="$USERNAME_GENERAL" \
+        -e POSTGRES_PASSWORD="$PASSWORD_GENERAL_LOW" \
+        -e POSTGRES_DB=immich \
+        -e POSTGRES_INITDB_ARGS="--data-checksums" \
+        -v "$PATH_IMMICH/postgres:/var/lib/postgresql/data" \
+        "$IMAGE_PG"
+
+    # 2. Redis (Valkey)
+    docker run -d \
+        --name immich_redis \
+        --restart unless-stopped \
+        --network immich_net \
+        "$IMAGE_REDIS"
+
+    # 3. Server
+    docker run -d \
+        --name immich_server \
+        --restart unless-stopped \
+        -p "$PORT_IMMICH:2283" \
+        --network immich_net \
+        -v "$PATH_IMMICH/data:/usr/src/app/upload" \
+        -e DB_HOSTNAME=immich_postgres \
+        -e DB_USERNAME="$USERNAME_GENERAL" \
+        -e DB_PASSWORD="$PASSWORD_GENERAL_LOW" \
+        -e DB_DATABASE_NAME=immich \
+        -e REDIS_HOSTNAME=immich_redis \
+        -e IMMICH_MACHINE_LEARNING_ENABLED=false \
+        -v /etc/localtime:/etc/localtime:ro \
+        "$IMAGE_SERVER"
+}
+
 case "$1" in
     create)
-        docker rm -f immich_postgres immich_redis immich postgres redis 2>/dev/null || true
-        docker network create immich_net 2>/dev/null || true
-        docker pull tensorchord/pgvecto-rs:pg16-v0.2.1 || true
-        docker pull docker.io/valkey/valkey:8 || true
-        docker pull ghcr.io/martabal/immich:latest || echo ""
-        docker run -d \
-            --name postgres \
-            --restart unless-stopped \
-            --network immich_net \
-            -e POSTGRES_USER="$USERNAME_GENERAL" \
-            -e POSTGRES_PASSWORD="$PASSWORD_GENERAL_LOW" \
-            -e POSTGRES_DB=immich \
-            -e POSTGRES_INITDB_ARGS="--data-checksums" \
-            -v immich_postgres_data:/var/lib/postgresql/data \
-            tensorchord/pgvecto-rs:pg16-v0.2.1
-        docker run -d \
-            --name redis \
-            --restart unless-stopped \
-            --network immich_net \
-            docker.io/valkey/valkey:8
-        docker run -d \
-            --name immich \
-            --restart unless-stopped \
-            -p "$PORT_IMMICH:8080" \
-            --network immich_net \
-            -v "$PATH_IMMICH:/usr/src/app/upload" \
-            -e DB_HOSTNAME=postgres \
-            -e DB_USERNAME="$USERNAME_GENERAL" \
-            -e DB_PASSWORD="$PASSWORD_GENERAL_LOW" \
-            -e DB_DATABASE_NAME=immich \
-            -e REDIS_HOSTNAME=redis \
-            ghcr.io/martabal/immich:latest
+        echo "Téléchargement des images de la stack Immich..."
+        docker pull "$IMAGE_PG"
+        docker pull "$IMAGE_REDIS"
+        docker pull "$IMAGE_SERVER"
+        run_containers
+        echo "Stack Immich créée avec succès."
         ;;
     update)
-        docker rm -f immich_postgres immich_redis immich postgres redis 2>/dev/null || true
-        docker network create immich_net 2>/dev/null || true
-        docker pull tensorchord/pgvecto-rs:pg16-v0.2.1 || true
-        docker pull docker.io/valkey/valkey:8 || true
-        docker pull ghcr.io/martabal/immich:latest || echo ""
-        docker run -d \
-            --name postgres \
-            --restart unless-stopped \
-            --network immich_net \
-            -e POSTGRES_USER="$USERNAME_GENERAL" \
-            -e POSTGRES_PASSWORD="$PASSWORD_GENERAL_LOW" \
-            -e POSTGRES_DB=immich \
-            -e POSTGRES_INITDB_ARGS="--data-checksums" \
-            -v immich_postgres_data:/var/lib/postgresql/data \
-            tensorchord/pgvecto-rs:pg16-v0.2.1
-        docker run -d \
-            --name redis \
-            --restart unless-stopped \
-            --network immich_net \
-            docker.io/valkey/valkey:8
-        docker run -d \
-            --name immich \
-            --restart unless-stopped \
-            -p "$PORT_IMMICH:8080" \
-            --network immich_net \
-            -v "$PATH_IMMICH:/usr/src/app/upload" \
-            -e DB_HOSTNAME=postgres \
-            -e DB_USERNAME="$USERNAME_GENERAL" \
-            -e DB_PASSWORD="$PASSWORD_GENERAL_LOW" \
-            -e DB_DATABASE_NAME=immich \
-            -e REDIS_HOSTNAME=redis \
-            ghcr.io/martabal/immich:latest
+        OLD_PG_ID=$(docker images -q "$IMAGE_PG" 2>/dev/null || echo "")
+        OLD_REDIS_ID=$(docker images -q "$IMAGE_REDIS" 2>/dev/null || echo "")
+        OLD_SERVER_ID=$(docker images -q "$IMAGE_SERVER" 2>/dev/null || echo "")
+
+        if ! docker pull "$IMAGE_PG" || ! docker pull "$IMAGE_REDIS" || ! docker pull "$IMAGE_SERVER"; then
+            echo "Erreur lors du téléchargement des images Immich." >&2
+            exit 1
+        fi
+
+        NEW_PG_ID=$(docker images -q "$IMAGE_PG" 2>/dev/null || echo "")
+        NEW_REDIS_ID=$(docker images -q "$IMAGE_REDIS" 2>/dev/null || echo "")
+        NEW_SERVER_ID=$(docker images -q "$IMAGE_SERVER" 2>/dev/null || echo "")
+
+        SERVER_EXISTS=$(docker ps -a -q -f name=^immich_server$ 2>/dev/null || echo "")
+
+        if [ "$OLD_PG_ID" = "$NEW_PG_ID" ] && [ "$OLD_REDIS_ID" = "$NEW_REDIS_ID" ] && [ "$OLD_SERVER_ID" = "$NEW_SERVER_ID" ] && [ -n "$SERVER_EXISTS" ]; then
+            echo "Les images d'Immich sont déjà à jour et les conteneurs existent. Aucune action requise."
+        else
+            echo "Mise à jour des conteneurs Immich..."
+            run_containers
+            echo "Stack Immich mise à jour avec succès."
+        fi
         ;;
     start)
-        docker start postgres redis immich
+        docker start immich_postgres immich_redis immich_server
         ;;
     stop)
-        docker stop immich redis postgres
+        docker stop immich_server immich_redis immich_postgres
         ;;
     restart)
-        docker restart postgres redis immich
+        docker restart immich_postgres immich_redis immich_server
         ;;
     *)
-        echo "Usage: immich {create|start|stop|restart}"
+        echo "Usage: $0 {create|update|start|stop|restart}"
         exit 1
         ;;
 esac
