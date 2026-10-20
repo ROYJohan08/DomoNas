@@ -13,6 +13,8 @@ LOG_DIR="$BASE_DIR/Logs"
 TEM_DIR="$BASE_DIR/Temp"
 SOF_DIR="$BASE_DIR/Softs"
 CRE_DIR="$BASE_DIR/Credentials"
+URL_CRE="https://raw.githubusercontent.com/ROYJohan08/DomoNas/refs/heads/main/credentials.env"
+URL_INS="https://raw.githubusercontent.com/ROYJohan08/DomoNas/refs/heads/main/install.sh"
 
 log() {
     mkdir -p "$LOG_DIR"
@@ -44,7 +46,7 @@ mkdir -p "$BASE_DIR" "$LOG_DIR" "$TEM_DIR" "$SOF_DIR" "$CRE_DIR"
 log "[+]" "Création de l'arboressance"
 
 log "[*]" "Mise a jour de l'installateur"
-wget -q -O "$TEM_DIR/install.sh" https://raw.githubusercontent.com/ROYJohan08/DomoNas/refs/heads/main/install.sh > /dev/null
+wget -q -O "$TEM_DIR/install.sh" $URL_INS > /dev/null
 if [ ! -f "$SOF_DIR/install.sh" ] || [ "$TEM_DIR/install.sh" -nt "$SOF_DIR/install.sh" ]; then
     cp "$TEM_DIR/install.sh" "$SOF_DIR/install.sh"
     log "[+]" "Mise a jour de l'installateur"
@@ -64,7 +66,7 @@ if ! command -v docker &> /dev/null; then
     echo \
       "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
       $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
-      tee /etc/apt/sourcesaclist.d/docker.list > /dev/null
+      tee /etc/apt/sources.list.d/docker.list > /dev/null
     apt-get update -y
     apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
     if [ $? -eq 0 ]; then
@@ -112,7 +114,7 @@ if [ ! -f "$TARGET_CRED" ]; then
     else
         log "[~]" "Recherche d'un fichier 'credentials.env' sur le système"
         log "[*]" "Téléchargement du modèle depuis GitHub"
-        if curl -fsSL "https://raw.githubusercontent.com/ROYJohan08/DomoNas/refs/heads/main/credentials.env" -o "$TARGET_CRED"; then
+        if curl -fsSL "$URL_CRE" -o "$TARGET_CRED"; then
             log "[+]" "Téléchargement du modèle depuis GitHub"
             if [ -f "$TARGET_CRED" ]; then
                 log "[*]" "Configuration interactive"
