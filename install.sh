@@ -22,19 +22,21 @@ log() {
 			"[+]") printf " \033[32m[PASS]\033[0m $2 \n" ;;
 			"[~]") printf " \033[38;5;208m[WAIT]\033[0m $2 \n" ;;
 			"[-]") printf " \033[31m[FAIL]\033[0m $2 \n" ;;
+			"[S]") printf " \033[34m[START]\033[0m $2 \n" ;;
+			"[F]") printf " \033[34m[END]\033[0m $2 \n" ;;
 		esac
     fi
 }
-
+log "[S]" "Démarrage du programme"
 # ┌────────────────────────────────────────────────────────────────────────────┐
 # │ SECTION : Installation de services                                         │
 # └────────────────────────────────────────────────────────────────────────────┘
 
 log "[*]" "Mise a jours du systeme"
-apt-get update -y > /dev/null
-apt-get upgrade -y > /dev/null
-apt-get autoremove -y --purge > /dev/null
-apt-get autoclean -y > /dev/null
+DEBIAN_FRONTEND=noninteractive apt-get update -qq > /dev/null 2>&1
+DEBIAN_FRONTEND=noninteractive apt-get upgrade -y -qq > /dev/null 2>&1
+DEBIAN_FRONTEND=noninteractive apt-get autoremove -y --purge -qq > /dev/null 2>&1
+DEBIAN_FRONTEND=noninteractive apt-get autoclean -y -qq > /dev/null 2>&1
 log "[+]" "Mise a jours du systeme"
 
 log "[*]" "Création de l'arboressance"
@@ -81,7 +83,7 @@ for pkg in $PACKAGES; do
     else
         log "[~]" "Vérification de '$pkg'"
 		log "[*]" "Installation de '$pkg'"
-        if apt-get install -y "$pkg" > /dev/null; then
+        if apt-get install -y "$pkg" > /dev/null 2>&1; then
             log "[+]" "Installation de '$pkg'"
         else
             log "[-]" "Installation de '$pkg'"
@@ -1811,7 +1813,7 @@ for srv in $SERVICES; do
             log "[*]" "Le conteneur '$container_name' est déjà actif."
         else
             log "[!]" "Le conteneur '$container_name' est arrêté ou absent. Lancement via '$srv create'..."
-            if "/usr/local/bin/$srv" update; then
+            if "/usr/local/bin/$srv" update > /dev/null 2>&1; then
                 log "[+]" "Service '$srv' initialisé et lancé avec succès."
             else
                 log "[-]" "Échec lors de l'initialisation du service '$srv'."
@@ -1826,3 +1828,4 @@ if docker image prune -f >/dev/null 2>&1; then
 else
     log "[-]" "Nettoyage des images Docker inutilisées"
 fi
+log "[E]" "Fin du programme"
