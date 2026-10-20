@@ -1,5 +1,5 @@
 #!/bin/sh
-#VERSION 202610200938
+#VERSION 202610200947
 set -eu
 
 if [ "$(id -u)" -ne 0 ]; then
@@ -1840,7 +1840,7 @@ fi
 
 log "[*]" "Création de l'index.php"
 
-DOMAIL_DYDNS="${DOMAIL_DYDNS:-dsm.royjohan.fr}"
+DNS_DOMONAS="${DOMAIL_DYDNS:-dsm.royjohan.fr}"
 DNS_API="${DNS_API:-api.royjohan.fr}"
 IP_LOCAL="${IP_LOCAL:-192.168.1.51}"
 URL_DAT="${URL_DAT:-https://raw.githubusercontent.com/ROYJohan08/DomoNas/refs/heads/main/data.json}"
