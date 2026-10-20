@@ -1,5 +1,5 @@
 #!/bin/sh
-#VERSION 202610200859
+#VERSION 202610200901
 set -eu
 
 if [ "$(id -u)" -ne 0 ]; then
@@ -1844,6 +1844,7 @@ DNS_DOMONAS="${DNS_DOMONAS:-dsm.royjohan.fr}"
 DNS_API="${DNS_API:-api.royjohan.fr}"
 IP_LOCAL="${IP_LOCAL:-192.168.1.51}"
 PATH_LAMP="${PATH_LAMP:-/media/Runable/Docker/Lamp}"
+OUTPUT_FILE="$PATH_LAMP/index.php"
 cat << 'EOF' > "$OUTPUT_FILE.tmp"
 <!DOCTYPE html>
 <html lang="fr">
