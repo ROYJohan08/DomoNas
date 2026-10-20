@@ -22,11 +22,11 @@ log() {
     echo "$1 - $(date +'%Y-%m-%d %H:%M:%S') - $2" >> "${LOG_DIR}/$(date +'%Y%m%d')-INSTALL.log"
     if [ "$DEBUG" = "1" ]; then
 		case "$1" in
-			"[+]") printf " \033[32m[PASS]\033[0m $2 \n" ;;
-			"[~]") printf " \033[38;5;208m[WAIT]\033[0m $2 \n" ;;
-			"[-]") printf " \033[31m[FAIL]\033[0m $2 \n" ;;
-			"[S]") printf " \033[34m[START]\033[0m $2 \n" ;;
-			"[F]") printf " \033[34m[END]\033[0m $2 \n" ;;
+			"[+]") printf " \033[32m[PASS]\033[0m  $2 \n" ;;
+			"[~]") printf " \033[38;5;208m[WAIT]\033[0m  $2 \n" ;;
+			"[-]") printf " \033[31m[FAIL]\033[0m  $2 \n" ;;
+			"[S]") printf " \033[34m[START]\033[0m  $2 \n" ;;
+			"[F]") printf " \033[34m[END]\033[0m   $2 \n" ;;
 		esac
     fi
 }
