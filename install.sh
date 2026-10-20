@@ -1,5 +1,5 @@
 #!/bin/sh
-#VERSION 202610200834
+#VERSION 202610200850
 set -eu
 
 if [ "$(id -u)" -ne 0 ]; then
@@ -15,6 +15,7 @@ SOF_DIR="$BASE_DIR/Softs"
 CRE_DIR="$BASE_DIR/Credentials"
 URL_CRE="https://raw.githubusercontent.com/ROYJohan08/DomoNas/refs/heads/main/credentials.env"
 URL_INS="https://raw.githubusercontent.com/ROYJohan08/DomoNas/refs/heads/main/install.sh"
+URL_DAT="https://raw.githubusercontent.com/ROYJohan08/DomoNas/refs/heads/main/data.json"
 
 log() {
     mkdir -p "$LOG_DIR"
@@ -30,6 +31,7 @@ log() {
     fi
 }
 log "[S]" "Démarrage du programme"
+
 # ┌────────────────────────────────────────────────────────────────────────────┐
 # │ SECTION : Installation de services                                         │
 # └────────────────────────────────────────────────────────────────────────────┘
@@ -1830,4 +1832,244 @@ if docker image prune -f >/dev/null 2>&1; then
 else
     log "[-]" "Nettoyage des images Docker inutilisées"
 fi
+
+
+# ┌────────────────────────────────────────────────────────────────────────────┐
+# │ SECTION : Création des pages webs                                          │
+# └────────────────────────────────────────────────────────────────────────────┘
+
+log "[*]" "Création de l'index.php"
+
+DNS_DOMONAS="${DNS_DOMONAS:-dsm.royjohan.fr}"
+DNS_API="${DNS_API:-api.royjohan.fr}"
+IP_LOCAL="${IP_LOCAL:-192.168.1.51}"
+PATH_LAMP="${PATH_LAMP:-/media/Runable/Docker/Lamp}"
+OUTPUT_FILE="$PATH_LAMP/index.php"
+cat << 'EOF' > "$OUTPUT_FILE.tmp"
+<!DOCTYPE html>
+<html lang="fr">
+        <?php
+                $localFile = __DIR__ . '/sources/services.json';
+				$githubUrl = https://raw.githubusercontent.com/ROYJohan08/DomoNas/refs/heads/main/data.json';
+                $remoteContent = @file_get_contents($githubUrl);
+                if ($remoteContent !== false) {
+                        file_put_contents($localFile,$remoteContent);
+                }
+        ?>
+        <head>
+                <meta charset="UTF-8">
+                <meta http-equiv="X-UA-Compatible" content="IE=edge">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>AubeZero — Dashboard Tactique DomoNas</title>
+                <style>
+                        :root {
+                                --bg-color: #050b14;
+                                --panel-bg: rgba(10, 25, 47, 0.85);
+                                --border-color: #00a2ff;
+                                --text-color: #cce7ff;
+                                --primary-blue: #00e5ff;
+                                --status-ok: #00ff66;
+                                --status-error: #ff3333;
+                                --font-mono: "Courier New", Courier, monospace;
+                        }
+                        body {background-color: var(--bg-color);color: var(--text-color);font-family: var(--font-mono);margin: 0;padding: 20px;}
+                        .container {max-width: 1200px;margin: 0 auto;}
+                        .glass {background: var(--panel-bg);border: 1px solid var(--border-color);box-shadow: 0 0 15px rgba(0, 229, 255, 0.2);border-radius: 4px;padding: 20px;}
+                        .header {display: flex;justify-content: space-between;align-items: center;border-bottom: 2px solid var(--border-color);padding-bottom: 10px;margin-bottom: 20px;text-transform: uppercase;}
+                        h2 {margin: 0;color: var(--primary-blue);letter-spacing: 2px;}
+                        .badge {padding: 4px 8px;border-radius: 2px;font-size: 0.85em;font-weight: bold;}
+                        .badge-ok { background: rgba(0, 255, 102, 0.15); color: var(--status-ok); border: 1px solid var(--status-ok); }
+                        .badge-error { background: rgba(255, 51, 51, 0.15); color: var(--status-error); border: 1px solid var(--status-error); }
+                        .badge-info { background: rgba(0, 229, 255, 0.15); color: var(--primary-blue); border: 1px solid var(--primary-blue); }
+                        .service-grid {display: grid;grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));gap: 15px;}
+                        .service-card {background: rgba(0, 162, 255, 0.05);border: 1px solid rgba(0, 229, 255, 0.3);padding: 15px;text-align: center;cursor: pointer;transition: all 0.2s ease;}
+                        .service-card:hover {border-color: var(--primary-blue);box-shadow: 0 0 10px rgba(0, 229, 255, 0.4);background: rgba(0, 162, 255, 0.15);}
+                        .service-card.disabled {opacity: 0.5;cursor: not-allowed;border-color: var(--status-error);}
+                        .service-icon {width: 48px;height: 48px;margin-bottom: 10px;}
+                        .service-name {font-weight: bold;color: #ffffff;margin-bottom: 8px;text-transform: uppercase;}
+                        .modal {display: none;position: fixed;top: 0; left: 0; width: 100%; height: 100%;background: rgba(0, 0, 0, 0.85);justify-content: center;align-items: center;z-index: 1000;}
+                        .modal-content {background: var(--bg-color);border: 2px solid var(--primary-blue);box-shadow: 0 0 20px rgba(0, 229, 255, 0.5);width: 80%;max-width: 600px;padding: 20px;position: relative;}
+                        .modal-close {position: absolute;top: 10px; right: 15px;color: var(--status-error);cursor: pointer;font-weight: bold;}
+                        #toast-container {position: fixed;bottom: 20px;right: 20px;z-index: 2000;}
+                        .discord-toast {background: #2f3136;border-left: 5px solid var(--status-error);color: #fff;padding: 12px 20px;margin-top: 10px;border-radius: 4px;box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);font-family: sans-serif;font-size: 0.9em;display: flex;align-items: center;gap: 10px;}
+                </style>
+        </head>
+        <body>
+                <div class="container">
+                        <div class="glass">
+                                <div class="header">
+                                        <h2>[AUBEZERO] — DASHBOARD DOMONAS</h2>
+                                        <span id="mode" class="badge badge-info">INITIALISATION...</span>
+                                </div>
+                                <div class="service-grid" id="grid"></div>
+                                <div id="logs" class="logs-container" style="display:none;"></div>
+                        </div>
+                </div>
+                <div id="infoModal" class="modal">
+                        <div class="modal-content">
+                                <span class="modal-close" onclick="closeModal()">[ FERMER ]</span>
+                                <h3 id="modalTitle" style="color:var(--primary-blue); margin-top:0;">DÉTAILS MMODULE</h3>
+                                <div id="modalBody"></div>
+                        </div>
+                </div>
+                <div id="toast-container"></div>
+                <script type="text/javascript" defer>
+                        const DOMAIN_NAS = "dsm.royjohan.fr";
+                        const DOMAIN_API = "api.royjohan.fr";
+                        const REMOTE_JSON = `https://${DOMAIN_API}/services.json`;
+                        const params = new URLSearchParams(location.search);
+                        const isLogsView = params.get("view") === "logs";
+                        const isLAN = location.hostname.startsWith("192.168.") || location.hostname === "localhost";
+                        document.getElementById("mode").textContent = isLAN ? "MODE RÉSEAU LOCAL (LAN)" : "MODE RESEAU DISTANT (WAN)";
+                        const grid = document.getElementById("grid");
+                        const logsBox = document.getElementById("logs");
+                        function showDiscordToast(message) {
+                                const container = document.getElementById("toast-container");
+                                const toast = document.createElement("div");
+                                toast.className = "discord-toast";
+                                toast.innerHTML = `<span>⚠️</span> <div><strong>Alerte Système :</strong> ${message}</div>`;
+                                container.appendChild(toast);
+                                setTimeout(() => {
+                                        toast.remove();
+                                }, 5000);
+                        }
+                        function openModal(title, content) {
+                                document.getElementById("modalTitle").textContent = title;
+                                document.getElementById("modalBody").innerHTML = content;
+                                document.getElementById("infoModal").style.display = "flex";
+                        }
+                        function closeModal() {
+                                document.getElementById("infoModal").style.display = "none";
+                        }
+                        const fetchWithTimeout = (url, timeout = 2500) => {
+                                return Promise.race([
+                                        fetch(url, { method: "GET", mode: "cors" }),
+                                        new Promise((_, reject) => setTimeout(() => reject(new Error("Délai d'attente dépassé")), timeout))
+                                ]);
+                        };
+                        async function loadServices() {
+                                let rawData = null;
+                                try {
+                                        console.log("📥 Chargement du fichier local sources/services.json...");
+                                        const local = await fetchWithTimeout("sources/services.json");
+                                        rawData = await local.json();
+                                        console.log("✅ Fichier local chargé avec succès.");
+                                } catch (err) {
+                                        console.error("❌ Échec du chargement local :", err);
+                                        showDiscordToast("Impossible de charger les données locales. " + err);
+                                }
+                                const cached = localStorage.getItem("aubezero_services");
+                                if (cached) {
+                                        try {
+                                                rawData = JSON.parse(cached);
+                                                console.log("📦 Données chargées depuis le localStorage (cache).");
+                                        } catch (e) {
+                                                console.error("❌ Erreur lors du parsing du cache localStorage :", e);
+                                        }
+                                }
+                                try {
+                                        const githubUrl = "https://raw.githubusercontent.com/ROYJohan08/DomoNas/refs/heads/main/data.json";
+                                        console.log("🌐 Vérification des mises à jour sur GitHub...");
+                                        const remoteRes = await fetchWithTimeout(`${githubUrl}?t=${Date.now()}`, 3000);
+                                        if (remoteRes.ok) {
+                                                const remoteData = await remoteRes.json();
+                                                const remoteStr = JSON.stringify(remoteData);
+                                                const currentStr = JSON.stringify(rawData);
+                                                if (remoteStr !== currentStr) {
+                                                        console.log("🔄 Nouvelle version détectée sur GitHub ! Mise à jour du localStorage.");
+                                                        localStorage.setItem("aubezero_services", remoteStr);
+                                                        rawData = remoteData;
+                                                } else {
+                                                        console.log("✨ Les données locales sont déjà à jour avec GitHub.");
+                                                }
+                                        } else {
+                                                console.warn("⚠️ Réponse GitHub non OK :", remoteRes.status);
+                                        }
+                                } catch (err) {
+                                        console.log("📴 Impossible de joindre GitHub (mode hors-ligne ou erreur réseau) :", err.message);
+                                }
+                                if (!rawData) {
+                                        console.warn("⚠️ Aucune donnée disponible (rawData est vide).");
+                                        return [];
+                                }
+                                if (Array.isArray(rawData)) {
+                                        console.log("📊 Format détecté : Tableau simple (compatibilité anc. version).");
+                                        return rawData;
+                                }
+                                console.log("📂 Format détecté : Objet avec catégories. Extraction de la catégorie 'index'.");
+                                return rawData.index || [];
+                        }
+                        const checkService = (url, timeout = 2500) => {
+                                return Promise.race([
+                                        fetch(url, { method: "GET", mode: "no-cors" }),
+                                        new Promise((_, reject) => setTimeout(() => reject(new Error("Hors ligne")), timeout))
+                                ]);
+                        };
+                        function loadDashboard() {
+                                loadServices().then(services => {
+                                        if (services.length === 0) {
+                                                grid.innerHTML = "<p style='color:var(--status-error)'>AUCUN SERVICE DISPONIBLE.</p>";
+                                                return;
+                                        }
+                                        services.forEach(s => {
+                                                let url = isLAN ? s.lan : (s.wan || `https://${DOMAIN_NAS}/${s.name.toLowerCase()}`);
+                                                const icon = `sources/images/${s.name}.png`;
+                                                const card = document.createElement("div");
+                                                card.className = "service-card";
+                                                card.id = `card-${s.name}`;
+                                                card.onclick = (e) => {
+                                                        if (e.target.classList.contains('info-btn')) return;
+                                                        window.open(url, "_blank");
+                                                };
+                                                card.innerHTML = `
+                                                        <img src="${icon}" class="service-icon" onerror="this.src='sources/images/default.png'">
+                                                        <div class="service-name">${s.name}</div>
+                                                        <div id="status-${s.name}"><span class="badge badge-info">TEST...</span></div>
+                                                        <button class="info-btn" style="margin-top:10px; background:none; border:1px solid var(--primary-blue); color:var(--primary-blue); cursor:pointer; font-size:0.7em;"
+                                                                onclick="openModal('${s.name}', '<strong>URL :</strong> ${url}<br><strong>Description :</strong> ${s.description || 'Module de la suite AubeZero.'}')">
+                                                                + DÉTAILS
+                                                        </button>
+                                                `;
+                                                grid.appendChild(card);
+                                                checkService(url)
+                                                        .then(() => {
+                                                                document.getElementById(`status-${s.name}`).innerHTML = "<span class='badge badge-ok'>OPÉRATIONNEL</span>";
+                                                        })
+                                                        .catch(() => {
+                                                                if (!isLAN && s.lan) {
+                                                                        url = s.lan;
+                                                                        checkService(url)
+                                                                                .then(() => {
+                                                                                        document.getElementById(`status-${s.name}`).innerHTML = "<span class='badge badge-ok'>EN LIGNE (LAN)</span>";
+                                                                                        card.onclick = (e) => { if (!e.target.classList.contains('info-btn')) window.open(url, "_blank"); };
+                                                                                })
+                                                                                .catch(() => {
+                                                                                        setServiceDown(s.name);
+                                                                                });
+                                                                        return;
+                                                                }
+                                                                setServiceDown(s.name);
+                                                        });
+                                        });
+                                });
+                        }
+                        function setServiceDown(serviceName) {
+                                document.getElementById(`status-${serviceName}`).innerHTML = "<span class='badge badge-error'>INACCESSIBLE</span>";
+                                document.getElementById(`card-${serviceName}`).classList.add("disabled");
+                                showDiscordToast(`Le service ${serviceName} est actuellement hors-ligne.`);
+                        }
+                        loadDashboard();
+                </script>
+        </body>
+</html>
+EOF
+sed -i "s|dsm.royjohan.fr|$DNS_DOMONAS\vert{}g" "$OUTPUT_FILE.tmp"
+sed -i "s|api.royjohan.fr|$DNS_API\vert{}g" "$OUTPUT_FILE.tmp"
+sed -i "s|192.168.1.51|$IP_LOCAL\vert{}g" "$OUTPUT_FILE.tmp"
+sed -i "s|https://raw.githubusercontent.com/ROYJohan08/DomoNas/refs/heads/main/data.json|$URL_DAT\vert{}g" "$OUTPUT_FILE.tmp"
+mv "$OUTPUT_FILE.tmp" "$OUTPUT_FILE"
+
+log "[+]" "Création du index.php"
+
+
 log "[E]" "Fin du programme"
