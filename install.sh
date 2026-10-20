@@ -1,5 +1,5 @@
 #!/bin/sh
-#VERSION 202610200934
+#VERSION 202610200938
 set -eu
 
 if [ "$(id -u)" -ne 0 ]; then
@@ -1840,7 +1840,7 @@ fi
 
 log "[*]" "Création de l'index.php"
 
-DNS_DOMONAS="${DNS_DOMONAS:-dsm.royjohan.fr}"
+DOMAIL_DYDNS="${DOMAIL_DYDNS:-dsm.royjohan.fr}"
 DNS_API="${DNS_API:-api.royjohan.fr}"
 IP_LOCAL="${IP_LOCAL:-192.168.1.51}"
 URL_DAT="${URL_DAT:-https://raw.githubusercontent.com/ROYJohan08/DomoNas/refs/heads/main/data.json}"
@@ -1849,7 +1849,7 @@ PATH_LAMP="${PATH_LAMP:-/media/Runable/Docker/Lamp}"
 OUTPUT_FILE="$PATH_LAMP/index.php"
 cat << EOF > "$OUTPUT_FILE"
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="FR-fr">
         <?php
                 \$localFile = __DIR__ . '/sources/services.json';
                 \$githubUrl = '$URL_DAT';
