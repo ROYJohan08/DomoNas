@@ -1,5 +1,5 @@
 #!/bin/sh
-#VERSION 202610171704
+#VERSION 202610200834
 set -eu
 
 if [ "$(id -u)" -ne 0 ]; then
