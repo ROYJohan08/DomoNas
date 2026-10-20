@@ -443,6 +443,10 @@ run_container() {
         -p "$PORT_LAMP:80" \
         -p 3306:3306 \
         "$IMAGE"
+		docker exec -u root "$NAME" apt-get update
+    	docker exec -u root "$NAME" apt-get install -y python3 python3-pip libgl1 libglib2.0-0
+    	docker exec -u root "$NAME" pip3 install opencv-python-headless
+		
 }
 case "$1" in
     create)
