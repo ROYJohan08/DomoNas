@@ -1805,8 +1805,149 @@ chmod +x /usr/local/bin/immich
 ln -sf /usr/local/bin/immich /usr/local/bin/im
 log "[+]" "Création de 'immich'"
 
+log "[*]" "Création de ftp'"
+cat << 'EOF' > /usr/local/bin/ftp
+#!/bin/sh
+set -eu
+set -a
+. "/etc/DomoNas/Credentials/credentials.env"
+set +a
+
+# Chemins et variables configurables
+PATH_FTP_DATA="${PATH_FTP_DATA:-/media/Runable/Docker/Ftp}"
+PORT_FTP="${PORT_FTP:-1102}"
+FTP_USER="${USERNAME_GENERAL:-admin}"
+FTP_PASSWORD="${PASSWORD_GENERAL_HIGH:-administrator}"
+
+NAME="ftp"
+IMAGE="atmoz/sftp:latest"
+
+mkdir -p "$PATH_FTP_DATA"
+
+run_container() {
+    docker rm -f "$NAME" 2>/dev/null || true
+    docker run -d \
+        --name "$NAME" \
+        --restart=unless-stopped \
+        -e TZ=CET \
+        -p "$PORT_FTP:22" \
+        -v "/media/:/home/$FTP_USER/" \
+        -v /media:/media \
+        "$IMAGE" \
+        "$FTP_USER:$FTP_PASSWORD:1000:1000:::shared"
+}
+
+case "$1" in
+    create)
+        docker pull "$IMAGE"
+        run_container
+        echo "Conteneur FTP ($NAME) créé avec succès sur le port $PORT_FTP."
+        ;;
+    update)
+        OLD_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        if ! docker pull "$IMAGE"; then
+            exit 1
+        fi
+        NEW_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        CONTAINER_EXISTS=$(docker ps -a -q -f name=^"$NAME"$ 2>/dev/null || echo "")
+
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ] && [ -n "$CONTAINER_EXISTS" ]; then
+            echo "L'image est déjà à jour et le conteneur existe. Aucune action requise."
+        else
+            run_container
+            echo "Conteneur $NAME mis à jour et créé avec succès."
+        fi
+        ;;
+    start)
+        docker start "$NAME"
+        ;;
+    stop)
+        docker stop "$NAME"
+        ;;
+    restart)
+        docker restart "$NAME"
+        ;;
+    *)
+        echo "Usage: $0 {create|update|start|stop|restart}"
+        exit 1
+        ;;
+esac
+EOF
+chmod +x /usr/local/bin/ftp
+log "[+]" "Création de ftp'"
+
+log "[*]" "Création de liteos"
+cat << 'EOF' > /usr/local/bin/liteos
+#!/bin/sh
+set -eu
+set -a
+. "/etc/DomoNas/Credentials/credentials.env"
+set +a
+
+PORT_LITEOS="${PORT_LITEOS:-1018}"
+
+NAME="liteos"
+# Image ultra-stable de LinuxServer pour Chromium avec interface web intégrée
+IMAGE="lscr.io/linuxserver/chromium:latest"
+
+run_container() {
+    docker rm -f "$NAME" 2>/dev/null || true
+
+    docker run -d \
+        --name "$NAME" \
+        --restart=unless-stopped \
+        -e PUID=1000 \
+        -e PGID=1000 \
+        -e TZ=Europe/Paris \
+        -e CHROME_CLI=https://www.google.com \
+        -v /etc/DomoNas/liteos/config:/config:rw \
+        -v /media:/config/downloads:rw \
+        -p "$PORT_LITEOS:3001" \
+        --shm-size="1gb" \
+        "$IMAGE"
+}
+
+case "$1" in
+    create)
+        docker pull "$IMAGE"
+        run_container
+        echo "Conteneur $NAME créé avec succès."
+        ;;
+    update)
+        OLD_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        if ! docker pull "$IMAGE"; then
+            exit 1
+        fi
+        NEW_IMAGE_ID=$(docker images -q "$IMAGE" 2>/dev/null || echo "")
+        CONTAINER_EXISTS=$(docker ps -a -q -f name=^"$NAME"$ 2>/dev/null || echo "")
+
+        if [ "$OLD_IMAGE_ID" = "$NEW_IMAGE_ID" ] && [ -n "$CONTAINER_EXISTS" ]; then
+            echo "L'image est déjà à jour et le conteneur existe. Aucune action requise."
+        else
+            run_container
+            echo "Conteneur $NAME mis à jour et créé avec succès."
+        fi
+        ;;
+    start)
+        docker start "$NAME"
+        ;;
+    stop)
+        docker stop "$NAME"
+        ;;
+    restart)
+        docker restart "$NAME"
+        ;;
+    *)
+        echo "Usage: $0 {create|update|start|stop|restart}"
+        exit 1
+        ;;
+esac
+EOF
+chmod +x /usr/local/bin/liteos
+log "[+]" "Création de liteos'"
+
 log "[*]" "Vérification de l'état des conteneurs Docker..."
-SERVICES="lamp homeassistant jellyfin downbox seedbox grocy portainer filebrowser freshrss mqtt gitea siyuan myelectricaldata kiwix kolibri cyberchef vaultwarden"
+SERVICES="lamp homeassistant jellyfin downbox seedbox grocy portainer filebrowser freshrss mqtt gitea siyuan myelectricaldata kiwix kolibri cyberchef vaultwarden ftp"
 for srv in $SERVICES; do
     if [ -x "/usr/local/bin/$srv" ]; then
         container_name="$srv"
