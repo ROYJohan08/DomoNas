@@ -1,0 +1,73 @@
+#!/bin/bash
+
+# S'assurer que le script est exécuté avec les privilèges sudo
+if [ "$EUID" -ne 0 ]; then
+  echo "[-] Veuillez exécuter ce script avec sudo : sudo ./install_osint.sh"
+  exit 1
+fi
+
+echo "[+] Mise à jour du système et installation des dépendances de base..."
+apt update && apt upgrade -y
+apt install -y python3 python3-pip python3-venv pipx git curl wget nmap whois dnsutils jq net-tools snapd
+
+# S'assurer que pipx est bien configuré
+pipx ensurepath
+
+echo "[+] Création d'un dossier de travail pour les outils clonés..."
+TOOLS_DIR="/opt/osint-tools"
+mkdir -p "$TOOLS_DIR"
+
+# 1. TheHarvester (Emails, sous-domaines, noms d'utilisateurs)
+echo "[+] Installation de theHarvester..."
+pipx install theHarvester --force
+
+# 2. Sherlock (Recherche de pseudos sur les réseaux sociaux)
+echo "[+] Installation de Sherlock..."
+pipx install sherlock-project --force
+
+# 3. Holehe (Vérification d'existence d'un e-mail sur plus de 120 sites)
+echo "[+] Installation de Holehe..."
+pipx install holehe --force
+
+# 4. OWASP Amass (Cartographie réseau et sous-domaines via Snap)
+echo "[+] Installation de OWASP Amass..."
+snap install amass
+
+# 5. Recon-ng (Framework de reconnaissance)
+echo "[+] Installation de Recon-ng..."
+if [ -d "$TOOLS_DIR/recon-ng" ]; then
+  cd "$TOOLS_DIR/recon-ng" && git pull
+else
+  git clone https://github.com/lanmaster53/recon-ng.git "$TOOLS_DIR/recon-ng"
+fi
+python3 -m venv "$TOOLS_DIR/recon-ng/venv"
+"$TOOLS_DIR/recon-ng/venv/bin/pip" install --upgrade pip
+"$TOOLS_DIR/recon-ng/venv/bin/pip" install -r "$TOOLS_DIR/recon-ng/REQUIREMENTS"
+ln -sf "$TOOLS_DIR/recon-ng/recon-ng" /usr/local/bin/recon-ng
+
+# 6. Photon (Crawler rapide d'extraction web)
+echo "[+] Installation de Photon..."
+if [ -d "$TOOLS_DIR/Photon" ]; then
+  cd "$TOOLS_DIR/Photon" && git pull
+else
+  git clone https://github.com/s0md3v/Photon.git "$TOOLS_DIR/Photon"
+fi
+python3 -m venv "$TOOLS_DIR/Photon/venv"
+"$TOOLS_DIR/Photon/venv/bin/pip" install -r "$TOOLS_DIR/Photon/requirements.txt"
+ln -sf "$TOOLS_DIR/Photon/photon.py" /usr/local/bin/photon
+
+# 7. SpiderFoot (Scanner d'automatisation OSINT)
+echo "[+] Installation de SpiderFoot..."
+if [ -d "$TOOLS_DIR/spiderfoot" ]; then
+  cd "$TOOLS_DIR/spiderfoot" && git pull
+else
+  git clone https://github.com/smicallef/spiderfoot.git "$TOOLS_DIR/spiderfoot"
+fi
+python3 -m venv "$TOOLS_DIR/spiderfoot/venv"
+"$TOOLS_DIR/spiderfoot/venv/bin/pip" install -r "$TOOLS_DIR/spiderfoot/requirements.txt"
+
+echo ""
+echo "===================================================="
+echo "[+] Installation terminée avec succès !"
+echo "[+] Holehe et tous les autres outils sont prêts."
+echo "===================================================="
